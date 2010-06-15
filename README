@@ -1,0 +1,25 @@
+Converts rst to OpenOffice impress (rst2odp).  Also includes a python
+library (``odplib/preso.py``) for creating impress files
+
+Requires docutils, pygments, PIL
+
+Usually it is run like so
+
+rst2odp path/to/rstfile.rst output.odp
+
+(use --traceback -r 3 for debug)
+
+Styling is supported with the ``--template-file`` switch, just pass it
+an .otp file
+
+todo:
+-----
+
+* Fix enumerated lists separated by "\n..\n"
+* Auto resize textframes/(images too?) as they are added
+* Image scaling (DONE)
+* Support for background image per slide (DONE)
+* Support for no title (DONE transition directive)
+* Enumerated list (DONE)
+* Simple animations (DONE)
+* ???
