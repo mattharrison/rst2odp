@@ -15,8 +15,13 @@ import os
 import sys
 import tempfile
 
-import pygments
-from pygments import formatter, lexers
+try:
+    import pygments
+    from pygments import formatter, lexers
+    pygmentsAvail = True
+except:
+    print 'Could not import pygments code highlighting will not work'
+    pygmentsAvail = False
 import zipwrap
 import Image
 import imagescale
@@ -176,12 +181,16 @@ class Preso(object):
             self.slides.append(XMLSlide(self, slide_xml, odp))
 
     def get_data(self, style_file=None):
+        if style_file and not os.path.exists(style_file):
+            print "template file %s doesn't exist" % style_file
+            assert False
         fd, filename = tempfile.mkstemp()
         zip_odp = self.to_file()
         if style_file:
             self.add_otp_style(zip_odp, style_file)
         zip_odp.zipit(filename)
         data = open(filename).read()
+        os.close(fd)
         os.remove(filename)
         return data
 
@@ -560,7 +569,8 @@ class Slide(object):
         call this
         """
         if self.cur_element:
-            self.cur_element.line_break()
+            #self.cur_element.line_break()
+            self.cur_element.write('')
 
     def start_animation(self, anim):
         self.animations.append(anim)
@@ -613,7 +623,7 @@ class Slide(object):
         """
         # pictures should be added the the draw:frame element
         self.pic_frame = PictureFrame(self, p)
-        self.pic_frame.add_node('draw:image', attrib={'xlink:href':os.path.join('Pictures', p.internal_name),
+        self.pic_frame.add_node('draw:image', attrib={'xlink:href': 'Pictures/' + p.internal_name,
                                                       'xlink:type':'simple',
                                                       'xlink:show':'embed',
                                                       'xlink:actuate':'onLoad' })
@@ -902,7 +912,6 @@ class MixedContent(object):
         for node, attr in self.pending_nodes:
             self.add_node(node, attr)
             
-
     def line_break(self):
         """insert as many line breaks as the insert_line_break variable says
         """
@@ -912,13 +921,16 @@ class MixedContent(object):
                 # we can just add a text:p and no line-break
                 # Create paragraph style first
                 self.add_node('text:p')
-            else:
-                self.add_node('text:line-break')
-                self.pop_node()
+            #else:
+            self.add_node('text:line-break')
+            self.pop_node()
+            if self.cur_node.tag == 'text:p':
+                return
             if self.cur_node.parent.tag != 'text:p':
                 self.pop_node()
 
         self.slide.insert_line_break = 0
+        
 
 
     def write(self, text, add_p_style=True, add_t_style=True):
@@ -930,8 +942,9 @@ class MixedContent(object):
         white spaces then dealing with the '' (empty strings) which
         would be the extra spaces
         """
-        self.line_break()
+
         self._add_styles(add_p_style, add_t_style)
+        self.line_break()
         self._add_pending_nodes()
 
         spaces = []
@@ -1213,51 +1226,61 @@ class ParagraphStyle(TextStyle):
     PREFIX = 'P%d'
 
 
-class OdtCodeFormatter(formatter.Formatter):  
-    def __init__(self, writable, preso):
-        formatter.Formatter.__init__(self)
-        self.writable = writable
-        self.preso = preso
+if pygmentsAvail:
 
-    def format(self, source, outfile):
-        tclass = pygments.token.Token
-        for ttype, value in source:
-            # getting ttype, values like (Token.Keyword.Namespace, u'')
-            if value == '':
-                continue
-            style_attrib = self.get_style(ttype)
-            tstyle = TextStyle(**style_attrib)
-            self.writable.slide.push_style(tstyle)
-            if value == '\n':
-                self.writable.slide.insert_line_break = 1
-                self.writable.line_break()
-            else:
-                parts = value.split('\n')
-                for part in parts[:-1]:
-                    self.writable.write(part)
+    class OdtCodeFormatter(formatter.Formatter):  
+        def __init__(self, writable, preso):
+            formatter.Formatter.__init__(self)
+            self.writable = writable
+            self.preso = preso
+            self.seen = []
+
+        def format(self, source, outfile):
+            tclass = pygments.token.Token
+            # push default style
+            default_style_attrib = self.get_style(tclass.Text)
+            self.writable.slide.push_style(TextStyle(**default_style_attrib))
+
+            for ttype, value in source:
+                self.seen.append(value)
+                # getting ttype, values like (Token.Keyword.Namespace, u'')
+                if value == '':
+                    continue
+                style_attrib = self.get_style(ttype)
+                tstyle = TextStyle(**style_attrib)
+                self.writable.slide.push_style(tstyle)
+                if value == '\n':
                     self.writable.slide.insert_line_break = 1
-                    self.writable.line_break()
-                self.writable.write(parts[-1])
-            self.writable.slide.pop_style()
-            self.writable.pop_node()
+                    self.writable.write('') # will insert break/formatting
+                else:
+                    parts = value.split('\n')
+                    for part in parts[:-1]:
+                        self.writable.write(part)
+                        self.writable.slide.insert_line_break = 1
+                        self.writable.write('') #insert break
+                    self.writable.write(parts[-1])
 
-            
-    def get_style(self, tokentype):
-        while not self.style.styles_token(tokentype):
-            tokentype = tokentype.parent
-        value = self.style.style_for_token(tokentype)
-        # default to monospace
-        results = {
-            'fo:font-family':MONO_FONT,
-            'style:font-family-generic':"swiss",
-            'style:font-pitch':"fixed"}
-        if value['color']:
-            results['fo:color'] = '#' + value['color']
-        if value['bold']:
-            results['fo:font-weight'] = 'bold'
-        if value['italic']:
-            results['fo:font-weight'] = 'italic'
-        return results
+                self.writable.slide.pop_style()
+
+                self.writable.pop_node()
+            self.writable.slide.pop_style()
+
+        def get_style(self, tokentype):
+            while not self.style.styles_token(tokentype):
+                tokentype = tokentype.parent
+            value = self.style.style_for_token(tokentype)
+            # default to monospace
+            results = {
+                'fo:font-family':MONO_FONT,
+                'style:font-family-generic':"swiss",
+                'style:font-pitch':"fixed"}
+            if value['color']:
+                results['fo:color'] = '#' + value['color']
+            if value['bold']:
+                results['fo:font-weight'] = 'bold'
+            if value['italic']:
+                results['fo:font-weight'] = 'italic'
+            return results
           
 
 class OutlineList(MixedContent):
@@ -1312,9 +1335,7 @@ http://books.evc-cit.info/odbook/ch03.html#bulleted-numbered-lists-section
         self._default_align = 'start'
         self.attrib = attrib or {'text:style-name':'L2'}
         MixedContent.__init__(self, slide, 'text:list', attrib=self.attrib)
-        # if slide already has text insert line break
-        self.line_break()
-
+        self.slide.insert_line_break = 0
         self.parents = [self.node]
         self.level = 0
         self.style_file = 'auto_list.xml'
