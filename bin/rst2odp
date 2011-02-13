@@ -292,9 +292,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         
 
     def depart_paragraph(self, node):
-        # add newline
-        if not self.at('list_item'):
-            self.depart_line(node)
+        # # add newline
+        # if not self.at('list_item'):
+        #     self.depart_line(node)
 
         classes = node.attributes.get('classes', [])
         if 'center' in classes or 'right' in classes:
@@ -313,6 +313,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('block_quote'):
             return # block quote adds paragraph style
         else:
+            #self.cur_slide.insert_line_break = 1
+            #self.cur_slide.insert_line_breaks()
+            
             self.cur_slide.parent_of('text:p')
 
     visit_definition = visit_paragraph
@@ -706,6 +709,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.push_style(style)
 
         if attributes['classes'] and 'code-block' in attributes['classes']:
+            print "CODE", node
             node_input = node.astext()
             language = node.attributes['language']
             self.cur_slide.add_code(node_input, language)

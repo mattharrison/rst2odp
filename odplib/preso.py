@@ -569,8 +569,8 @@ class Slide(object):
         call this
         """
         if self.cur_element:
-            #self.cur_element.line_break()
-            self.cur_element.write('')
+            self.cur_element.line_break()
+            #self.cur_element.write('')
 
     def start_animation(self, anim):
         self.animations.append(anim)
@@ -881,10 +881,11 @@ class MixedContent(object):
         if add_paragraph or self.slide.paragraph_attribs:
             p_attrib = {'text:style-name':para.name}
             p_attrib.update(self.slide.paragraph_attribs)
-            if self._is_last_child('text:p', p_attrib):
-                children = self.cur_node.getchildren()
-                self.cur_node = children[-1] 
-            elif not self._in_tag('text:p', p_attrib):
+            # if self._is_last_child('text:p', p_attrib):
+            #     children = self.cur_node.getchildren()
+            #     self.cur_node = children[-1] 
+            #elif not self._in_tag('text:p', p_attrib):
+            if not self._in_tag('text:p', p_attrib):
                 self.parent_of('text:p')
                 # Create paragraph style first
                 self.slide._preso.add_style(para)
@@ -944,7 +945,7 @@ class MixedContent(object):
         """
 
         self._add_styles(add_p_style, add_t_style)
-        self.line_break()
+        #self.line_break()
         self._add_pending_nodes()
 
         spaces = []
@@ -1240,8 +1241,8 @@ if pygmentsAvail:
             # push default style
             default_style_attrib = self.get_style(tclass.Text)
             self.writable.slide.push_style(TextStyle(**default_style_attrib))
-
             for ttype, value in source:
+                pop = True
                 self.seen.append(value)
                 # getting ttype, values like (Token.Keyword.Namespace, u'')
                 if value == '':
@@ -1251,18 +1252,22 @@ if pygmentsAvail:
                 self.writable.slide.push_style(tstyle)
                 if value == '\n':
                     self.writable.slide.insert_line_break = 1
-                    self.writable.write('') # will insert break/formatting
+                    #self.writable.write('') # will insert break/formatting
+                    self.writable.slide.insert_line_breaks()
+                    # when we only put a line break, we don't want to pop cause we never put in a span to write to 
+                    pop = False
                 else:
                     parts = value.split('\n')
                     for part in parts[:-1]:
                         self.writable.write(part)
                         self.writable.slide.insert_line_break = 1
-                        self.writable.write('') #insert break
+                        self.writable.slide.insert_line_breaks()
+                        #self.writable.write('') #insert break
                     self.writable.write(parts[-1])
 
                 self.writable.slide.pop_style()
-
-                self.writable.pop_node()
+                if pop:
+                    self.writable.pop_node()
             self.writable.slide.pop_style()
 
         def get_style(self, tokentype):
