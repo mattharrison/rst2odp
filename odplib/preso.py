@@ -1252,7 +1252,7 @@ if pygmentsAvail:
                 self.writable.slide.push_style(tstyle)
                 if value == '\n':
                     self.writable.slide.insert_line_break = 1
-                    #self.writable.write('') # will insert break/formatting
+                    self.writable.write('') # will insert break/formatting
                     self.writable.slide.insert_line_breaks()
                     # when we only put a line break, we don't want to pop cause we never put in a span to write to 
                     pop = False
