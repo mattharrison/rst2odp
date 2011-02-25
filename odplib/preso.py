@@ -868,6 +868,9 @@ class MixedContent(object):
         self.cur_node = self.cur_node.parent
 
     def _add_styles(self, add_paragraph=True, add_text=True):
+        """
+        Adds paragraph and span wrappers if necessary based on style
+        """
         p_styles = {'fo:text-align':self._default_align}
         t_styles = {}
         for s in self.slide.pending_styles:
@@ -943,7 +946,6 @@ class MixedContent(object):
         white spaces then dealing with the '' (empty strings) which
         would be the extra spaces
         """
-
         self._add_styles(add_p_style, add_t_style)
         #self.line_break()
         self._add_pending_nodes()
@@ -1234,7 +1236,6 @@ if pygmentsAvail:
             formatter.Formatter.__init__(self)
             self.writable = writable
             self.preso = preso
-            self.seen = []
 
         def format(self, source, outfile):
             tclass = pygments.token.Token
@@ -1243,7 +1244,6 @@ if pygmentsAvail:
             self.writable.slide.push_style(TextStyle(**default_style_attrib))
             for ttype, value in source:
                 pop = True
-                self.seen.append(value)
                 # getting ttype, values like (Token.Keyword.Namespace, u'')
                 if value == '':
                     continue
