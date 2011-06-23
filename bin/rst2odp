@@ -245,14 +245,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def _push_handout(self, classes):
         if 'handout' in classes:
             self.in_node['handout'] = True
-            self.cur_slide.push_element()
+
             if not self.cur_slide.notes_frame:
                 self.cur_slide.add_notes_frame()
             else:
                 self.cur_slide.cur_element = self.cur_slide.notes_frame
-                self.cur_slide.insert_line_break += 1
                 self.cur_slide.insert_line_breaks()
-
+            self.cur_slide.push_element()
 
     def visit_paragraph(self, node):
         classes =  node.attributes.get('classes', [])
