@@ -555,24 +555,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         if 'incremental' in node.attributes.get('classes', []):
             self.cur_slide.end_animation()
 
-    def visit_superscript(self, node):
-        attribs = {'style:text-position':'40% 58%'}
-        style = preso.TextStyle(**attribs)
-        self.cur_slide.push_style(style)
-
-    def depart_superscript(self, node):
-        # pop off the text:span
-        self.cur_slide.pop_style()
-        self.cur_slide.pop_node()
-
-    def visit_subscript(self, node):
-        attribs = {'style:text-position':'-25% 65%'}
-        style = preso.TextStyle(**attribs)
-        self.cur_slide.push_style(style)
-
-    depart_subscript = depart_superscript
-
-
     def visit_emphasis(self, node):
         attribs = {'fo:font-style':'italic'}
         style = preso.TextStyle(**attribs)
