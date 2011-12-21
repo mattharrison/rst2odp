@@ -973,8 +973,8 @@ def _test():
     doctest.testmod()
 
 if __name__ == "__main__":
-    if sys.version_info >= (2, 7):
-        raise SystemExit("Error: rst2odp is not currently compatible with python 2.7 or newer")
+    #if sys.version_info >= (2, 7):
+    #    raise SystemExit("Error: rst2odp is not currently compatible with python 2.7 or newer")
     if '--doctest' in sys.argv:
         _test()
     else:
