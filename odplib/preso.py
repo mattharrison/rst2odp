@@ -157,6 +157,8 @@ class Preso(object):
         self._styles_added = {}
 
         self._init_xml()
+        self.master_page_name_cover = None
+        self.master_page_name_normal = None
 
     def _init_xml(self):
         self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
@@ -196,6 +198,13 @@ class Preso(object):
         os.remove(filename)
         return data
 
+    def set_template(self, style_file):
+        style = zipwrap.ZipWrap(style_file)
+        title_name, normal_name = list(self.get_master_page_names(style.cat('content.xml')))[:2]
+        self.master_page_name_cover = title_name
+        self.master_page_name_normal = normal_name
+
+
     def add_otp_style(self, zip_odp, style_file):
         """
         takes the slide content and merges in the style_file
@@ -205,9 +214,15 @@ class Preso(object):
             for p in style.cat('Pictures'):
                 picture_file = 'Pictures/'+p
                 zip_odp.touch(picture_file, style.cat(picture_file))
-        zip_odp.touch('styles.xml', style.cat('styles.xml'))
+        xml_data = style.cat('styles.xml')
+        zip_odp.touch('styles.xml', xml_data)
         return zip_odp
 
+    def get_master_page_names(self, xml_data):
+        root = et.fromstring(xml_data)
+        pages = root.findall('.//{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
+        for page in pages:
+            yield page.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}master-page-name')
 
     def to_file(self, filename=None):
         """
@@ -540,6 +555,7 @@ class XMLSlide(object):
 class Slide(object):
     def __init__(self, preso, page_number=None):
         self.title_frame = None
+        self.preso = preso
         self.text_frames = []
         self._cur_text_frame = None
         self.pic_frame = None
@@ -660,11 +676,22 @@ class Slide(object):
         ins._fire_page_number(self.page_number+1)
         return ins
 
+    def _get_master_page_name(self):
+        if self.page_number == 1:
+            if self.preso.master_page_name_cover:
+                return self.preso.master_page_name_cover
+            return 'Default'
+        else:
+            if self.preso.master_page_name_normal:
+                return self.preso.master_page_name_normal
+            return 'Default'
+
     def _init_xml(self):
+        mpn = self._get_master_page_name()
         self._page = el('draw:page', attrib={
                 'draw:name':'page%d' % self.page_number,
                 'draw:style-name':'dp1',
-                'draw:master-page-name':'Default',
+                'draw:master-page-name':self._get_master_page_name(),
                 'presentation:presentation-page-layout-name':'AL1T0'
                 })
         office_forms = sub_el(self._page, 'office:forms',

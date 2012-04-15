@@ -127,11 +127,15 @@ class Writer(writers.Writer):
         self.parts['encoding'] = self.document.settings.output_encoding
         self.parts['version'] = docutils.__version__
 
+
 class ODPTranslator(nodes.GenericNodeVisitor):
     def __init__(self, document):
         nodes.GenericNodeVisitor.__init__(self, document)
         self.settings = document.settings
         self.preso = preso.Preso()
+
+        if self.settings.template_file:
+            self.preso.set_template(self.settings.template_file)
 
         if self.settings.page_size:
             preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x) for x in self.settings.page_size.split('x')]
