@@ -107,7 +107,12 @@ class Writer(writers.Writer):
             ('Specify pages to export (2,3,9-10)',
              ['--pages-to-output'],
              {'action': 'store',
-              'dest': 'pages_to_output'})
+              'dest': 'pages_to_output'}),
+            ('Specify WxH (cm) default(%sx%s)' % (preso.SLIDE_WIDTH,
+                                                  preso.SLIDE_HEIGHT),
+             ['--page-size'],
+             {'action': 'store',
+              'dest': 'page_size'})
             )
         )
     def __init__(self):
@@ -127,6 +132,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         nodes.GenericNodeVisitor.__init__(self, document)
         self.settings = document.settings
         self.preso = preso.Preso()
+
+        if self.settings.page_size:
+            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x) for x in self.settings.page_size.split('x')]
 
         if self.settings.pages_to_output:
             self.preso.limit_pages = num_string_to_list(self.settings.pages_to_output)
@@ -704,7 +712,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.push_style(style)
 
         if attributes['classes'] and 'code-block' in attributes['classes']:
-            print "CODE", node
             node_input = node.astext()
             language = node.attributes['language']
 

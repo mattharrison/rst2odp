@@ -284,9 +284,10 @@ class Preso(object):
     def styles_xml(self):
         filename = os.path.join(DATA_DIR, 'styles.xml')
         data = open(filename).read()
+        data = data.decode('utf-8')
         if NORMAL_FONT != 'Arial':
-            data = data.replace('fo:font-family="Arial"',
-                                'fo:font-family="%s"' %NORMAL_FONT)
+            data = data.replace(u'fo:font-family="Arial"',
+                                u'fo:font-family="%s"' %NORMAL_FONT)
         return data
 
     def to_xml(self):
@@ -1039,10 +1040,10 @@ class TextFrame(MixedContent):
         attrib = attrib or {
             'presentation:style-name':'pr2',
             'draw:layer':'layout',
-            'svg:width':'25.199cm',
-            'svg:height':'13.86cm',
-            'svg:x':'1.4cm',
-            'svg:y':'4.577cm',
+            'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
+            'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.66), #'13.86cm',
+            'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
+            'svg:y':'%.2fcm' % ((SLIDE_HEIGHT - (SLIDE_HEIGHT*.66))/2),#'4.577cm',
             'presentation:class':'subtitle'
             }
 
@@ -1066,10 +1067,10 @@ class TitleFrame(TextFrame):
         attrib = attrib or {
             'presentation:style-name':'Default-title',
             'draw:layer':'layout',
-            'svg:width':'25.199cm',
-            'svg:height':'1.737cm',
-            'svg:x':'1.4cm',
-            'svg:y':'1.721cm',
+            'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
+            'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.087), #'svg:height':'1.737cm',
+            'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm'
+            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.087), #'1.721cm',
             'presentation:class':'title'
             }
 
@@ -1448,9 +1449,9 @@ class TableFrame(MixedContent):
     def __init__(self, slide, frame_attrib=None, table_attrib=None):
         self.frame_attrib = frame_attrib or {'draw:style-name':'standard',
                                              'draw:layer':'layout',
-                                             'svg:width':'25.199cm',#'14.098cm',
+                                             'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
                                              #'svg:height':'13.86cm', #'''1.943cm',
-                                             'svg:x':'1.4cm',
+                                             'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
                                              'svg:y':'147pt'#'24.577m'
                                              }
         MixedContent.__init__(self, slide, 'draw:frame', attrib=self.frame_attrib)

@@ -139,6 +139,8 @@ class ZipWrap(object):
         path = os.path.join(self.src_dir, path)
         fout = open(path, 'w')
         if contents:
+            if isinstance(contents, unicode):
+                contents = contents.encode('utf-8')
             fout.write(contents)
 
     def _clean_path(self, path):
@@ -146,7 +148,7 @@ class ZipWrap(object):
         if path.startswith("/"):
             path = path[1:]
         return path
-        
+
 
     def mkdir(self, path):
         path = self._clean_path(path)
@@ -193,11 +195,11 @@ class ZipWrap(object):
                     dnf["dirs"].append(path)
 
         os.path.walk(self.src_dir, visit_path, dirs_n_files)
-        
+
         # add dirs first
         # Note has issues with empty directories
         for d in dirs_n_files["dirs"]:
-            new_path = d[len(self.src_dir):]           
+            new_path = d[len(self.src_dir):]
             if not new_path.endswith("/"):
                 new_path = new_path+"/"
             zinfo = zipfile.ZipInfo(new_path)
@@ -206,7 +208,7 @@ class ZipWrap(object):
             ##zout.writestr(zinfo, "")
 
         for f in dirs_n_files["files"]:
-            new_path = f[len(self.src_dir):]           
+            new_path = f[len(self.src_dir):]
             zout.write(f, new_path)
 
 
