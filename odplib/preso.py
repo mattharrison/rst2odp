@@ -219,6 +219,7 @@ class Preso(object):
                 picture_file = 'Pictures/'+p
                 zip_odp.touch(picture_file, style.cat(picture_file))
         xml_data = style.cat('styles.xml')
+        xml_data = self.override_styles(xml_data)
         zip_odp.touch('styles.xml', xml_data)
         return zip_odp
 
@@ -300,13 +301,17 @@ class Preso(object):
         filename = os.path.join(DATA_DIR, 'settings.xml')
         return open(filename).read()
 
-    def styles_xml(self):
-        filename = os.path.join(DATA_DIR, 'styles.xml')
-        data = open(filename).read()
+    def override_styles(self, data):
         data = data.decode('utf-8')
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
+        return data
+
+    def styles_xml(self):
+        filename = os.path.join(DATA_DIR, 'styles.xml')
+        data = open(filename).read()
+        data = self.override_styles(data)
         return data
 
     def to_xml(self):
