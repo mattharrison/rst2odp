@@ -200,7 +200,11 @@ class Preso(object):
 
     def set_template(self, style_file):
         style = zipwrap.ZipWrap(style_file)
-        title_name, normal_name = list(self.get_master_page_names(style.cat('content.xml')))[:2]
+	names = list(self.get_master_page_names(style.cat('content.xml')))[:2]
+	if len(names) == 2:
+            title_name, normal_name = names
+	else:
+	    title_name, normal_name = names[0], names[0]
         self.master_page_name_cover = title_name
         self.master_page_name_normal = normal_name
 
