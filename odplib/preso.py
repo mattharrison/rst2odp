@@ -66,6 +66,7 @@ DATA_DIR =  os.path.join(os.path.dirname(__file__), 'data')
 
 MONO_FONT = 'Courier New' # I like 'Envy Code R'
 NORMAL_FONT = 'Arial'
+PYGMENTS_STYLE = 'default'
 
 SLIDE_WIDTH = 30 # cm
 SLIDE_HEIGHT = 21
@@ -635,7 +636,7 @@ class Slide(object):
         style = ParagraphStyle(**{'fo:text-align':'start'})
         self.push_style(style)
         output = pygments.highlight(code, lexers.get_lexer_by_name(language, stripall=True),
-                                    OdtCodeFormatter(self.cur_element, self._preso))
+                                    OdtCodeFormatter(self.cur_element, self._preso, style=PYGMENTS_STYLE))
         self.pop_style()
         self.pop_node()
 
@@ -1271,8 +1272,8 @@ class ParagraphStyle(TextStyle):
 if pygmentsAvail:
 
     class OdtCodeFormatter(formatter.Formatter):
-        def __init__(self, writable, preso):
-            formatter.Formatter.__init__(self)
+        def __init__(self, writable, preso, **options):
+            formatter.Formatter.__init__(self, **options)
             self.writable = writable
             self.preso = preso
 

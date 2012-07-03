@@ -108,6 +108,10 @@ class Writer(writers.Writer):
              ['--pages-to-output'],
              {'action': 'store',
               'dest': 'pages_to_output'}),
+            ('Specify a Pygments style (see pygmentize -L styles)',
+             ['--pygments-style'],
+             {'action': 'store',
+              'dest': 'pygments_style'}),
             ('Specify WxH (cm) default(%sx%s)' % (preso.SLIDE_WIDTH,
                                                   preso.SLIDE_HEIGHT),
              ['--page-size'],
@@ -148,6 +152,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         if self.settings.font:
             preso.NORMAL_FONT = self.settings.font
+
+        if self.settings.pygments_style:
+            preso.PYGMENTS_STYLE = self.settings.pygments_style
 
         self.in_node = {} # map of tagname to True if we are in/under this
         self._reset()
