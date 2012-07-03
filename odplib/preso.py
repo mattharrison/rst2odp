@@ -1332,7 +1332,7 @@ if pygmentsAvail:
             if value['italic']:
                 results['fo:font-style'] = 'italic'
             if value['underline']:
-		results['style:text-underline-type'] = 'single'
+                results['style:text-underline-type'] = 'single'
             if value['bgcolor']:
                 results['fo:background-color'] = '#' + value['bgcolor']
             if value['border']:
