@@ -1323,7 +1323,13 @@ if pygmentsAvail:
             if value['bold']:
                 results['fo:font-weight'] = 'bold'
             if value['italic']:
-                results['fo:font-weight'] = 'italic'
+                results['fo:font-style'] = 'italic'
+            if value['underline']:
+		results['style:text-underline-type'] = 'single'
+            if value['bgcolor']:
+                results['fo:background-color'] = '#' + value['bgcolor']
+            if value['border']:
+                results['fo:border'] = '#' + value['border']
             return results
 
 
