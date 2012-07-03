@@ -437,7 +437,6 @@ class Picture(object):
 
         if 'align' in self.user_defined:
             align = self.user_defined['align']
-	    print "Align: %s" % align
             if 'top' in align:
                 attrib['style:vertical-pos'] = 'top'
             if 'right' in align:
