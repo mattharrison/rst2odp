@@ -72,6 +72,7 @@ rst.directives.register_directive('code-block', SyntaxHighlightCodeBlock)
 class SetSlideDesign(rst.Directive):
     required_arguments = 1
     optional_arguments = 0
+    final_argument_whitespace = 1
     has_content = False
     #
     # See visit_literal_block for code that processes the node
