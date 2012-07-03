@@ -1074,7 +1074,6 @@ class PictureFrame(MixedContent):
             'svg:y':y, #'4.577cm',
             }
         attrib = picture.update_frame_attributes(attrib)
-	print "Attrib: %s" % attrib
         MixedContent.__init__(self, slide, 'draw:frame', attrib=attrib)
 
 
