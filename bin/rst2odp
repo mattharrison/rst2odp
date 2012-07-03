@@ -181,7 +181,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth = 0
         self.footer = None
 
-    def _init_slide(self, force=False, master_page_name=''):
+    def _init_slide(self, force=False, master_page_name=None):
         if force or self.cur_slide is None:
             self._reset()
             self.cur_slide = self.preso.add_slide(master_page_name=master_page_name)
@@ -194,6 +194,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def get_whole(self):
         return self.preso.get_data(self.settings.template_file)
+
+    def get_slide_design(self, node):
+        children = node.parent.children
+        design = ''
+        for child in children:
+            if child is node:
+                return design
+	    if child.attributes.get('name', None) == 'slide-design':
+                design = child.attributes['design']
 
     def dispatch_visit(self, node):
         # Easier just to throw nodes I'm in in a dict, than keeping
@@ -540,15 +549,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     visit_substitution_definition = _dumb_visit
     depart_substitution_definition = _dumb_depart
-
-    def get_slide_design(self, node):
-        children = node.parent.children
-        design = ''
-        for child in children:
-            if child is node:
-                return design
-            if 'name' in child.attributes and child.attributes['name'] == 'slide-design':
-                design = child.attributes['design']
 
     def visit_section(self, node):
 

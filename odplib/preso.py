@@ -437,6 +437,7 @@ class Picture(object):
 
         if 'align' in self.user_defined:
             align = self.user_defined['align']
+	    print "Align: %s" % align
             if 'top' in align:
                 attrib['style:vertical-pos'] = 'top'
             if 'right' in align:
@@ -1073,6 +1074,7 @@ class PictureFrame(MixedContent):
             'svg:y':y, #'4.577cm',
             }
         attrib = picture.update_frame_attributes(attrib)
+	print "Attrib: %s" % attrib
         MixedContent.__init__(self, slide, 'draw:frame', attrib=attrib)
 
 
