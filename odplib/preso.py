@@ -66,6 +66,7 @@ DATA_DIR =  os.path.join(os.path.dirname(__file__), 'data')
 
 MONO_FONT = 'Courier New' # I like 'Envy Code R'
 NORMAL_FONT = 'Arial'
+PYGMENTS_STYLE = 'default'
 
 SLIDE_WIDTH = 30 # cm
 SLIDE_HEIGHT = 21
@@ -200,7 +201,11 @@ class Preso(object):
 
     def set_template(self, style_file):
         style = zipwrap.ZipWrap(style_file)
-        title_name, normal_name = list(self.get_master_page_names(style.cat('content.xml')))[:2]
+	names = list(self.get_master_page_names(style.cat('content.xml')))[:2]
+	if len(names) == 2:
+            title_name, normal_name = names
+	else:
+	    title_name, normal_name = names[0], names[0]
         self.master_page_name_cover = title_name
         self.master_page_name_normal = normal_name
 
@@ -215,6 +220,7 @@ class Preso(object):
                 picture_file = 'Pictures/'+p
                 zip_odp.touch(picture_file, style.cat(picture_file))
         xml_data = style.cat('styles.xml')
+        xml_data = self.override_styles(xml_data)
         zip_odp.touch('styles.xml', xml_data)
         return zip_odp
 
@@ -296,14 +302,18 @@ class Preso(object):
         filename = os.path.join(DATA_DIR, 'settings.xml')
         return open(filename).read()
 
-    def styles_xml(self):
-        filename = os.path.join(DATA_DIR, 'styles.xml')
-        data = open(filename).read()
+    def override_styles(self, data):
         data = data.decode('utf-8')
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
         #if "Arial" in data:
+        return data
+
+    def styles_xml(self):
+        filename = os.path.join(DATA_DIR, 'styles.xml')
+        data = open(filename).read()
+        data = self.override_styles(data)
         return data
 
     def to_xml(self):
@@ -328,9 +338,9 @@ class Preso(object):
             self._auto_styles.append(node)
 
 
-    def add_slide(self):
+    def add_slide(self, master_page_name=''):
         pnum = len(self.slides)+1
-        s = Slide(self, page_number=pnum)
+        s = Slide(self, page_number=pnum, master_page_name=master_page_name)
         self.slides.append(s)
         return s
 
@@ -554,7 +564,7 @@ class XMLSlide(object):
 
 
 class Slide(object):
-    def __init__(self, preso, page_number=None):
+    def __init__(self, preso, page_number=None, master_page_name=''):
         self.title_frame = None
         self.preso = preso
         self.text_frames = []
@@ -570,6 +580,10 @@ class Slide(object):
         self.paragraph_attribs = {} # used to mark id's for animations
         self.page_number_listeners = [self]
         self.pending_styles = []
+        if master_page_name:
+            self.master_page_name = master_page_name
+        else:
+            self.master_page_name = self._get_master_page_name()
 
         self.element_stack = [] # allow us to push pop
         self.cur_element = None # if we write it could be to title,
@@ -627,7 +641,7 @@ class Slide(object):
         style = ParagraphStyle(**{'fo:text-align':'start'})
         self.push_style(style)
         output = pygments.highlight(code, lexers.get_lexer_by_name(language, stripall=True),
-                                    OdtCodeFormatter(self.cur_element, self._preso))
+                                    OdtCodeFormatter(self.cur_element, self._preso, style=PYGMENTS_STYLE))
         self.pop_style()
         self.pop_node()
 
@@ -688,11 +702,11 @@ class Slide(object):
             return 'Default'
 
     def _init_xml(self):
-        mpn = self._get_master_page_name()
+        mpn = self.master_page_name
         self._page = el('draw:page', attrib={
                 'draw:name':'page%d' % self.page_number,
                 'draw:style-name':'dp1',
-                'draw:master-page-name':self._get_master_page_name(),
+                'draw:master-page-name':mpn,
                 'presentation:presentation-page-layout-name':'AL1T0'
                 })
         office_forms = sub_el(self._page, 'office:forms',
@@ -1264,8 +1278,8 @@ class ParagraphStyle(TextStyle):
 if pygmentsAvail:
 
     class OdtCodeFormatter(formatter.Formatter):
-        def __init__(self, writable, preso):
-            formatter.Formatter.__init__(self)
+        def __init__(self, writable, preso, **options):
+            formatter.Formatter.__init__(self, **options)
             self.writable = writable
             self.preso = preso
 
@@ -1316,7 +1330,13 @@ if pygmentsAvail:
             if value['bold']:
                 results['fo:font-weight'] = 'bold'
             if value['italic']:
-                results['fo:font-weight'] = 'italic'
+                results['fo:font-style'] = 'italic'
+            if value['underline']:
+                results['style:text-underline-type'] = 'single'
+            if value['bgcolor']:
+                results['fo:background-color'] = '#' + value['bgcolor']
+            if value['border']:
+                results['fo:border'] = '#' + value['border']
             return results
 
 
