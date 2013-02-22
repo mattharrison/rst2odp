@@ -303,6 +303,7 @@ class Preso(object):
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
+        #if "Arial" in data:
         return data
 
     def to_xml(self):
@@ -1070,7 +1071,8 @@ class TextFrame(MixedContent):
             'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
             'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.66), #'13.86cm',
             'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
-            'svg:y':'%.2fcm' % ((SLIDE_HEIGHT - (SLIDE_HEIGHT*.66))/2),#'4.577cm',
+            #'svg:y':'%.2fcm' % ((SLIDE_HEIGHT - (SLIDE_HEIGHT*.66))/2),#'4.577cm',
+            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.25),
             'presentation:class':'subtitle'
             }
 

@@ -41,8 +41,8 @@ build: env
 
 .PHONY: upload
 upload: env
-	$(PY) setup.py sdist upload
+	$(PY) setup.py sdist register upload
 
 .PHONY: clean
 clean:
-	rm
+	rm -rf dist rst2odp.egg-info

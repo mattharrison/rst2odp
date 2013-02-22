@@ -10,6 +10,7 @@ setup(name="rst2odp",
       description="Converter for rst to OpenOffice Impress",
       long_description='''Packacking of rst2odp and opdlib from docutils sandbox.  odplib is a standalone library for creating odp output from python.  rst2odp wraps it for rst users''',
       license='Apache',
+      url='https://github.com/mattharrison/rst2odp',
       scripts=["bin/rst2odp"],
       package_dir={"odplib":"odplib"},
       package_data={'odplib':['data/*.xml']},
@@ -26,4 +27,3 @@ setup(name="rst2odp",
         'Topic :: Office/Business'
         ]
 )
-           
