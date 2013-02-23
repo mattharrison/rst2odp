@@ -13,8 +13,8 @@ setup(name="rst2odp",
       url='https://github.com/mattharrison/rst2odp',
       scripts=["bin/rst2odp"],
       #package_dir={"odplib":"odplib"},
-      requires=['docutils==0.10', 'pygments==1.6',
-                'pillow==1.7.8']
+      install_requires=['docutils == 0.10', 'pygments == 1.6',
+                        'pillow == 1.7.8'],
       package_data={'odplib':['data/*.xml']},
       packages=['odplib'],
       classifiers=[
