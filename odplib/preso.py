@@ -23,7 +23,7 @@ except:
     print 'Could not import pygments code highlighting will not work'
     pygmentsAvail = False
 import zipwrap
-import Image
+from PIL import Image
 import imagescale
 
 DOC_CONTENT_ATTRIB = {
@@ -1532,4 +1532,3 @@ def _test():
 
 if __name__ == '__main__':
     _test()
-

@@ -6,6 +6,7 @@ import sys
 import os
 
 import docutils
+import docutils.utils #hack around circ. dep in io (docutils.10)
 from docutils import io, writers, nodes
 from docutils.readers import standalone
 from docutils.core import Publisher, default_description, \
