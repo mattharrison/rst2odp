@@ -44,6 +44,20 @@ Source code
   def foo(bar, baz):
     fizzle(bar, baz)
 
+
+More Source code
+----------------
+
+.. class:: small
+
+    .. code-block:: c
+
+        int
+        main(void) {
+            printf("Hello, world\n");
+            return 0;
+        }
+
 Incremental Text
 ----------------
 
@@ -70,6 +84,8 @@ Creating slides
 * install ``rst2odp``
 * plain : ``rst2odp slides.rst output.odp``
 * template : ``rst2odp slides.rst --template-file template/darkGradient.otp output.odp``
+* fonts : ``rst2odp --font="Droid Sans" --mono-font="Droid Sana Mono" slides.rst output.odp``
+* code highlighting style : ``rst2odp --pygments-style=bw slides.rst output.odp``
 
 Thanks
 ------
