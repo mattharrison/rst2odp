@@ -337,10 +337,11 @@ class Preso(object):
             self._styles_added[name] = 1
             self._auto_styles.append(node)
 
-
-    def add_slide(self, master_page_name=''):
+    def add_slide(self, master_page_name=None, layout=None):
         pnum = len(self.slides)+1
         s = Slide(self, page_number=pnum, master_page_name=master_page_name)
+        if layout is not None:
+            s.set_layout(layout)
         self.slides.append(s)
         return s
 
@@ -707,12 +708,16 @@ class Slide(object):
                 'draw:name':'page%d' % self.page_number,
                 'draw:style-name':'dp1',
                 'draw:master-page-name':mpn,
-                'presentation:presentation-page-layout-name':'AL1T0'
                 })
+        self.set_layout('AL1T0')
         office_forms = sub_el(self._page, 'office:forms',
                               attrib={'form:automatic-focus':'false',
                                       'form:apply-design-mode':'false'})
 
+    def set_layout(self, layout_name):
+        self._page.set('presentation:presentation-page-layout-name',
+            layout_name)
+                                      
     def get_node(self):
         """return etree Element representing this slide"""
         # already added title, text frames

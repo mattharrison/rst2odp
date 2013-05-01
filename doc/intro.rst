@@ -68,7 +68,7 @@ Due to "feature" in ODT spec, it only works (by clicks) on a paragraph or outlin
   * foo
   * bar
   * baz
-
+  
 Text styling
 ------------
 
@@ -77,6 +77,23 @@ Text styling
 Some *strong text* and **emphasized text**
 
 :orange:`s5defs.txt Colors are also supported`
+
+.. slide-layout:: 2column
+
+Multiple Columns
+----------------
+
+This text goes in the first column.
+
+.. column:: 2
+
+This text goes in the second column.
+
+.. column:: 3
+
+This text goes in the third column.
+
+.. slide-layout:: 1column
 
 Creating slides
 ---------------
