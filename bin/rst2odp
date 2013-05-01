@@ -80,10 +80,40 @@ class SetSlideDesign(rst.Directive):
     #   created here.
     def run(self):
         design = self.arguments[0]
-        design_block = nodes.docinfo(name="slide-design", design=design)
-	return [design_block]
+        design_block = nodes.docinfo(name="slide-design", value=design)
+        return [design_block]
 
 rst.directives.register_directive('slide-design', SetSlideDesign)
+
+class SetSlideLayout(rst.Directive):
+    required_arguments = 1
+    optional_arguments = 0
+    final_argument_whitespace = 1
+    has_content = False
+    #
+    # See visit_literal_block for code that processes the node
+    #   created here.
+    def run(self):
+        layout = self.arguments[0]
+        layout_block = nodes.docinfo(name="slide-layout", value=layout)
+        return [layout_block]
+
+rst.directives.register_directive('slide-layout', SetSlideLayout)
+
+class SetColumn(rst.Directive):
+    required_arguments = 1
+    optional_arguments = 0
+    final_argument_whitespace = 1
+    has_content = False
+    #
+    # See visit_literal_block for code that processes the node
+    #   created here.
+    def run(self):
+        column = self.arguments[0]
+        column_block = nodes.docinfo(name="column", value=column)
+        return [column_block]
+
+rst.directives.register_directive('column', SetColumn)
 
 class ImportNode(nodes.General, nodes.Inline, nodes.Element): pass
 
@@ -182,10 +212,19 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth = 0
         self.footer = None
 
-    def _init_slide(self, force=False, master_page_name=None):
+    def _init_slide(self, force=False):
         if force or self.cur_slide is None:
+            master_page_name = self.get_most_recent_docinfo('slide-design')
+            
+            layout = self.get_most_recent_docinfo('slide-layout')
+            if layout == '1column':
+                layout = 'AL1T0'
+            elif layout == '2column':
+                layout = 'AL2T3'
+            
             self._reset()
-            self.cur_slide = self.preso.add_slide(master_page_name=master_page_name)
+            self.cur_slide = self.preso.add_slide(master_page_name=master_page_name,
+                layout=layout)
 
     def at(self, nodename):
         """
@@ -196,14 +235,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def get_whole(self):
         return self.preso.get_data(self.settings.template_file)
 
-    def get_slide_design(self, node):
-        children = node.parent.children
-        design = ''
-        for child in children:
-            if child is node:
-                return design
-	    if child.attributes.get('name', None) == 'slide-design':
-                design = child.attributes['design']
+    def get_most_recent_docinfo(self, name):
+        docinfo = self.current_docinfo_states.get(name, None)
+        if docinfo:
+            return docinfo.attributes['value']
+        else:
+            return None
 
     def dispatch_visit(self, node):
         # Easier just to throw nodes I'm in in a dict, than keeping
@@ -241,8 +278,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_title(self, node):
         if self.at('section') < 2:
-            master_page_name = self.get_slide_design(node)
-            self._init_slide(master_page_name=master_page_name)
+            self._init_slide()
         if self.at('topic'):
             return
         elif self.at('sidebar'):
@@ -441,9 +477,53 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.preso.add_footer(self.footer)
         self.footer = None
 
-    visit_docinfo = _dumb_visit
+    current_docinfo_states = {}
+    
+    def visit_docinfo(self, node):
+        name = node.get('name', None)
+        if name:
+            if name == 'column':
+                self.visit_column(node)
+            else:
+                self.current_docinfo_states[name] = node
+
     depart_docinfo = _dumb_depart
 
+    def visit_column(self, node):
+        column_num = int(node.attributes['value'])
+        left_margin = 1
+        spacing = 0.5
+        
+        available_width = preso.SLIDE_WIDTH
+        available_width -= left_margin * 2
+        available_width -= spacing * (column_num - 1)
+        column_width = available_width / column_num
+        left = left_margin
+        
+        for frame in self.cur_slide.text_frames:
+            node = frame.get_node()
+            node.attrib['presentation:class'] = 'outline'
+            node.attrib['presentation:style-name'] = 'pr4'
+            node.attrib['svg:x'] = "%dcm" % left
+            node.attrib['svg:width'] = "%dcm" % column_width
+            node.attrib['svg:y'] = '4.577cm'
+            node.attrib['svg:height'] = '13.86cm'
+            left += column_width + spacing
+        
+        self.cur_slide.push_element()
+        
+        attrib = {
+            'presentation:style-name':'pr5',
+            'draw:layer':'layout',
+            'svg:y':'4.577cm',
+            'svg:height':'13.86cm',
+            'svg:x':"%dcm" % left,
+            'svg:width':"%dcm" % column_width,
+            'presentation:class':'outline'
+        }
+        self.cur_slide.add_text_frame(attrib)
+        self.cur_slide.insert_line_break = 0
+    
     # bibliographic elements
     def visit_author(self, node):
         self.visit_attribution(node)
@@ -556,8 +636,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         # first page has no section
         if self.at('section') < 2:
             # don't create slide for subsections
-            master_page_name = self.get_slide_design(node)
-            self._init_slide(force=True, master_page_name=master_page_name)
+            self._init_slide(force=True)
 
     def depart_section(self, node):
         if self.at('section') < 1:
@@ -566,8 +645,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def visit_transition(self, node):
         # hack to have titleless slides (transitions come in between sections)
         self._reset()
-        master_page_name = self.get_slide_design(node)
-        self._init_slide(force=True, master_page_name=master_page_name)
+        self._init_slide(force=True)
 
     depart_transition = _dumb_depart
 
