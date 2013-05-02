@@ -542,6 +542,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.depart_line(node) # add new-line
         self.depart_attribution(node)
 
+    def visit_field_list(self, node):
+        pass
+
+    def depart_field_list(self, node):
+        pass
+
     def visit_field(self, node):
         pass
 
@@ -585,6 +591,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.push_pending_node('text:a', {'xlink:href': '%s' % node['refuri'],
                                                         'xlink:type': 'simple'})
             self.cur_slide.write(node.astext())
+            self.cur_slide.pop_pending_node()
         else:
             # needs to be in a p
             # need to hack a bit, since .write usually inserts text:p and text:span
@@ -966,7 +973,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.push_element()
         #put the hint on the right side
         attrib = {
-            'presentation:style-name':'pr2',
+            'presentation:style-name':'Default-subtitle',
             'draw:layer':'layout',
             'svg:width':'12.296cm',
             'svg:height':'13.86cm',

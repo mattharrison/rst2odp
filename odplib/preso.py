@@ -154,12 +154,16 @@ class Preso(object):
         self._root = None
         self._auto_styles = None
         self._presentation = None
+        self.template_style_data = None
+        self.template_layouts = {}
 
         self._styles_added = {}
 
         self._init_xml()
         self.master_page_name_cover = None
         self.master_page_name_normal = None
+        
+        self.extract_master_page_styles(self.styles_xml())
 
     def _init_xml(self):
         self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
@@ -174,7 +178,7 @@ class Preso(object):
 
     def import_slide(self, preso_file, page_num):
         odp = zipwrap.ZipWrap(preso_file)
-        content = odp.cat('content.xml')
+        content = odp.cat('content.xml', False)
         content_tree = et.fromstring(content)
         slides = content_tree.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}body/{urn:oasis:names:tc:opendocument:xmlns:office:1.0}presentation/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
         try:
@@ -199,27 +203,61 @@ class Preso(object):
         os.remove(filename)
         return data
 
-    def set_template(self, style_file):
-        style = zipwrap.ZipWrap(style_file)
-	names = list(self.get_master_page_names(style.cat('content.xml')))[:2]
-	if len(names) == 2:
+    def get_xpath(self, namespace, element):
+        return "{%s}%s" % (DOC_CONTENT_ATTRIB['xmlns:' + namespace], element)
+        
+    def set_template(self, template_file):
+        # Open the template presentation and extract all the layouts
+        # included. We need these to dimension our frames to match.
+        template_styles_file = zipwrap.ZipWrap(template_file)
+        template_styles_xml = template_styles_file.cat('styles.xml', False)
+        self.extract_master_page_styles(template_styles_xml)
+        
+        # Guess that the first master pages used in the template
+        # presentation should be used for the cover page and all other pages,
+        # respectively. If only one master page is used, it's used for both.
+        
+        template_content_xml = template_styles_file.cat('content.xml', False)
+        master_pages_used = self.get_master_page_names(template_content_xml)
+        names = list(master_pages_used)[:2]
+        if len(names) == 2:
             title_name, normal_name = names
-	else:
-	    title_name, normal_name = names[0], names[0]
+        else:
+            title_name, normal_name = names[0], names[0]
+        
         self.master_page_name_cover = title_name
         self.master_page_name_normal = normal_name
 
-
+    def extract_master_page_styles(self, styles_xml_string):
+        self.template_style_data = et.fromstring(styles_xml_string.encode("utf-8"))
+        
+        # The layouts turned out not to be very useful:
+        """
+        for layout_el in self.template_style_data.findall('.//' +
+            self.get_xpath('style', 'presentation-page-layout')):
+            
+            name = layout_el.get(self.get_xpath('style', 'name'))
+            self.template_layouts[name] = layout_el
+        """
+        
+        # But the master pages contain the actual frame dimensions
+        # that we need. Go figure.
+        for master_el in self.template_style_data.findall('.//' +
+            self.get_xpath('style', 'master-page')):
+            
+            name = master_el.get(self.get_xpath('style', 'name'))
+            self.template_layouts[name] = master_el
+        
     def add_otp_style(self, zip_odp, style_file):
         """
         takes the slide content and merges in the style_file
         """
         style = zipwrap.ZipWrap(style_file)
-        if 'Pictures' in style.cat(''):
-            for p in style.cat('Pictures'):
+        if 'Pictures' in style.cat('', False):
+            for p in style.cat('Pictures', False):
                 picture_file = 'Pictures/'+p
-                zip_odp.touch(picture_file, style.cat(picture_file))
-        xml_data = style.cat('styles.xml')
+                zip_odp.touch(picture_file, style.cat(picture_file, True))
+        xml_data = style.cat('styles.xml', False)
         xml_data = self.override_styles(xml_data)
         zip_odp.touch('styles.xml', xml_data)
         return zip_odp
@@ -230,6 +268,39 @@ class Preso(object):
         for page in pages:
             yield page.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}master-page-name')
 
+    def get_placeholders(self, master_name):
+        placeholders = {}
+        
+        master_el = self.template_layouts.get(master_name, None)
+        if master_el is not None:
+            # for placeholder in layout_el.iter(self.get_xpath('presentation', 'placeholder')):
+            for placeholder in master_el.iter(self.get_xpath('draw', 'frame')):
+                if (placeholder.get(self.get_xpath('presentation', 'placeholder'))
+                    == 'true'):
+                    
+                    slot_name = placeholder.get(self.get_xpath('presentation', 'class'))
+                    placeholders[slot_name] = {
+                        'x': placeholder.get(self.get_xpath('svg', 'x')),
+                        'y': placeholder.get(self.get_xpath('svg', 'y')),
+                        'width': placeholder.get(self.get_xpath('svg', 'width')),
+                        'height': placeholder.get(self.get_xpath('svg', 'height')),
+                    }
+            
+            if not 'outline' in placeholders:
+                raise ValueError("There is no 'outline' placeholder in "
+                    "slide master '%s', cannot use it" % master_name)
+        else:
+            # use some defaults; TODO provide a way to set these from
+            # the command line.
+            placeholders = {
+                'title': dict(x="2.057cm", y="1.743cm", width="23.911cm",
+                    height="3.507cm"),
+                'outline': dict(x="2.057cm", y="5.838cm", width="23.911cm",
+                    height="13.23cm"),
+            }
+            
+        return placeholders
+        
     def to_file(self, filename=None):
         """
         >>> p = Preso()
@@ -255,9 +326,9 @@ class Preso(object):
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
 """
-        files = zip.cat('/')
+        files = zip.cat('/', False)
         try:
-            files.extend(zip.cat('/Pictures'))
+            files.extend(zip.cat('/Pictures', False))
         except IOError, e:
             # it's ok to not have pictures ;)
             pass
@@ -303,7 +374,6 @@ class Preso(object):
         return open(filename).read()
 
     def override_styles(self, data):
-        data = data.decode('utf-8')
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
@@ -312,7 +382,8 @@ class Preso(object):
 
     def styles_xml(self):
         filename = os.path.join(DATA_DIR, 'styles.xml')
-        data = open(filename).read()
+        import codecs
+        data = codecs.open(filename, 'r', 'utf-8').read()
         data = self.override_styles(data)
         return data
 
@@ -522,7 +593,7 @@ class XMLSlide(object):
         images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
         for image in images:
             path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
-            data = odp_zipwrap.cat(path)
+            data = odp_zipwrap.cat(path, True)
             name = path.split('/')[1]
             self.preso._pictures.append(ImportedPicture(name, data))
 
@@ -542,7 +613,7 @@ class XMLSlide(object):
         auto_attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
         found = {}
         # get content.xml automatic-styles
-        content = odp_zipwrap.cat('content.xml')
+        content = odp_zipwrap.cat('content.xml', False)
         content_node = et.fromstring(content)
         auto_node = content_node.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles')[0]
 
@@ -585,6 +656,7 @@ class Slide(object):
             self.master_page_name = master_page_name
         else:
             self.master_page_name = self._get_master_page_name()
+        self.placeholders = self.preso.get_placeholders(self.master_page_name)
 
         self.element_stack = [] # allow us to push pop
         self.cur_element = None # if we write it could be to title,
@@ -628,6 +700,15 @@ class Slide(object):
             self.add_text_frame()
         self.cur_element.pending_nodes.append((name,attr))
 
+    def pop_pending_node(self):
+        """
+        pending nodes are for affecting type, such as wrapping content
+        with text:a to make a hyperlink.  Anything in pending nodes
+        will be written before the actual text.
+        User needs to remember to pop out of it.
+        """
+        self.cur_element.pending_nodes.pop()
+        
     def push_style(self, style):
         if self.cur_element is None:
             self.add_text_frame()
@@ -717,7 +798,10 @@ class Slide(object):
     def set_layout(self, layout_name):
         self._page.set('presentation:presentation-page-layout-name',
             layout_name)
-                                      
+    
+    def get_placeholders(self):
+        return self.placeholders
+        
     def get_node(self):
         """return etree Element representing this slide"""
         # already added title, text frames
@@ -1070,7 +1154,7 @@ class PictureFrame(MixedContent):
     def __init__(self, slide, picture, attrib=None):
         x,y,w,h = picture.get_xywh()
         attrib = attrib or {
-            'presentation:style-name':'pr2',
+            'presentation:style-name':'Default-subtitle',
             'draw:style-name':'gr2',
             'draw:layer':'layout',
             'svg:width':w, #picture.get_width(),
@@ -1084,15 +1168,15 @@ class PictureFrame(MixedContent):
 
 class TextFrame(MixedContent):
     def __init__(self, slide, attrib=None):
+        placeholders = slide.get_placeholders()
         attrib = attrib or {
-            'presentation:style-name':'pr2',
+            'presentation:style-name':'Default-outline1',
             'draw:layer':'layout',
-            'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
-            'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.66), #'13.86cm',
-            'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
-            #'svg:y':'%.2fcm' % ((SLIDE_HEIGHT - (SLIDE_HEIGHT*.66))/2),#'4.577cm',
-            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.25),
-            'presentation:class':'subtitle'
+            'svg:width': placeholders['outline']['width'],
+            'svg:height': placeholders['outline']['height'],
+            'svg:x': placeholders['outline']['x'],
+            'svg:y': placeholders['outline']['y'],
+            'presentation:class':'outline'
             }
 
         MixedContent.__init__(self, slide,  'draw:frame', attrib=attrib)
@@ -1112,13 +1196,14 @@ class TextFrame(MixedContent):
 
 class TitleFrame(TextFrame):
     def __init__(self, slide, attrib=None):
+        placeholders = slide.get_placeholders()
         attrib = attrib or {
             'presentation:style-name':'Default-title',
             'draw:layer':'layout',
-            'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
-            'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.087), #'svg:height':'1.737cm',
-            'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm'
-            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.087), #'1.721cm',
+            'svg:width': placeholders['title']['width'],
+            'svg:height': placeholders['title']['height'],
+            'svg:x': placeholders['title']['x'],
+            'svg:y': placeholders['title']['y'],
             'presentation:class':'title'
             }
 
