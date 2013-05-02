@@ -973,7 +973,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.push_element()
         #put the hint on the right side
         attrib = {
-            'presentation:style-name':'pr2',
+            'presentation:style-name':'Default-subtitle',
             'draw:layer':'layout',
             'svg:width':'12.296cm',
             'svg:height':'13.86cm',
