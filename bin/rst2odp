@@ -591,6 +591,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.push_pending_node('text:a', {'xlink:href': '%s' % node['refuri'],
                                                         'xlink:type': 'simple'})
             self.cur_slide.write(node.astext())
+            self.cur_slide.pop_pending_node()
         else:
             # needs to be in a p
             # need to hack a bit, since .write usually inserts text:p and text:span

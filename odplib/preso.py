@@ -628,6 +628,15 @@ class Slide(object):
             self.add_text_frame()
         self.cur_element.pending_nodes.append((name,attr))
 
+    def pop_pending_node(self):
+        """
+        pending nodes are for affecting type, such as wrapping content
+        with text:a to make a hyperlink.  Anything in pending nodes
+        will be written before the actual text.
+        User needs to remember to pop out of it.
+        """
+        self.cur_element.pending_nodes.pop()
+        
     def push_style(self, style):
         if self.cur_element is None:
             self.add_text_frame()
