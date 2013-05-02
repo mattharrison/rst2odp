@@ -542,6 +542,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.depart_line(node) # add new-line
         self.depart_attribution(node)
 
+    def visit_field_list(self, node):
+        pass
+
+    def depart_field_list(self, node):
+        pass
+
     def visit_field(self, node):
         pass
 
