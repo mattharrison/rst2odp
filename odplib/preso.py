@@ -178,7 +178,7 @@ class Preso(object):
 
     def import_slide(self, preso_file, page_num):
         odp = zipwrap.ZipWrap(preso_file)
-        content = odp.cat('content.xml')
+        content = odp.cat('content.xml', False)
         content_tree = et.fromstring(content)
         slides = content_tree.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}body/{urn:oasis:names:tc:opendocument:xmlns:office:1.0}presentation/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
         try:
@@ -210,14 +210,14 @@ class Preso(object):
         # Open the template presentation and extract all the layouts
         # included. We need these to dimension our frames to match.
         template_styles_file = zipwrap.ZipWrap(template_file)
-        template_styles_xml = template_styles_file.cat('styles.xml')
+        template_styles_xml = template_styles_file.cat('styles.xml', False)
         self.extract_master_page_styles(template_styles_xml)
         
         # Guess that the first master pages used in the template
         # presentation should be used for the cover page and all other pages,
         # respectively. If only one master page is used, it's used for both.
         
-        template_content_xml = template_styles_file.cat('content.xml')
+        template_content_xml = template_styles_file.cat('content.xml', False)
         master_pages_used = self.get_master_page_names(template_content_xml)
         names = list(master_pages_used)[:2]
         if len(names) == 2:
@@ -253,11 +253,11 @@ class Preso(object):
         takes the slide content and merges in the style_file
         """
         style = zipwrap.ZipWrap(style_file)
-        if 'Pictures' in style.cat(''):
-            for p in style.cat('Pictures'):
+        if 'Pictures' in style.cat('', False):
+            for p in style.cat('Pictures', False):
                 picture_file = 'Pictures/'+p
-                zip_odp.touch(picture_file, style.cat(picture_file))
-        xml_data = style.cat('styles.xml')
+                zip_odp.touch(picture_file, style.cat(picture_file, True))
+        xml_data = style.cat('styles.xml', False)
         xml_data = self.override_styles(xml_data)
         zip_odp.touch('styles.xml', xml_data)
         return zip_odp
@@ -326,9 +326,9 @@ class Preso(object):
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
 """
-        files = zip.cat('/')
+        files = zip.cat('/', False)
         try:
-            files.extend(zip.cat('/Pictures'))
+            files.extend(zip.cat('/Pictures', False))
         except IOError, e:
             # it's ok to not have pictures ;)
             pass
@@ -374,7 +374,6 @@ class Preso(object):
         return open(filename).read()
 
     def override_styles(self, data):
-        data = data.decode('utf-8')
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
@@ -383,7 +382,8 @@ class Preso(object):
 
     def styles_xml(self):
         filename = os.path.join(DATA_DIR, 'styles.xml')
-        data = open(filename).read()
+        import codecs
+        data = codecs.open(filename, 'r', 'utf-8').read()
         data = self.override_styles(data)
         return data
 
@@ -593,7 +593,7 @@ class XMLSlide(object):
         images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
         for image in images:
             path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
-            data = odp_zipwrap.cat(path)
+            data = odp_zipwrap.cat(path, True)
             name = path.split('/')[1]
             self.preso._pictures.append(ImportedPicture(name, data))
 
@@ -613,7 +613,7 @@ class XMLSlide(object):
         auto_attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
         found = {}
         # get content.xml automatic-styles
-        content = odp_zipwrap.cat('content.xml')
+        content = odp_zipwrap.cat('content.xml', False)
         content_node = et.fromstring(content)
         auto_node = content_node.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles')[0]
 
