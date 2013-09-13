@@ -217,7 +217,7 @@ class Preso(object):
         # presentation should be used for the cover page and all other pages,
         # respectively. If only one master page is used, it's used for both.
         
-        template_content_xml = template_styles_file.cat('content.xml', False)
+        template_content_xml = template_styles_file.cat('content.xml', False).encode('utf-8')
         master_pages_used = self.get_master_page_names(template_content_xml)
         names = list(master_pages_used)[:2]
         if len(names) == 2:
