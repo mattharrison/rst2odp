@@ -203,6 +203,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             preso.PYGMENTS_STYLE = self.settings.pygments_style
 
         self.in_node = {} # map of tagname to True if we are in/under this
+        self.current_docinfo_states = {}
         self._reset()
 
     def _reset(self):
@@ -215,16 +216,19 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def _init_slide(self, force=False):
         if force or self.cur_slide is None:
             master_page_name = self.get_most_recent_docinfo('slide-design')
-            
+
             layout = self.get_most_recent_docinfo('slide-layout')
             if layout == '1column':
                 layout = 'AL1T0'
             elif layout == '2column':
                 layout = 'AL2T3'
-            
+
             self._reset()
             self.cur_slide = self.preso.add_slide(master_page_name=master_page_name,
                 layout=layout)
+        # reset slide-design
+        self.current_docinfo_states['slide-design'] = None
+
 
     def at(self, nodename):
         """
@@ -477,8 +481,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.preso.add_footer(self.footer)
         self.footer = None
 
-    current_docinfo_states = {}
-    
     def visit_docinfo(self, node):
         name = node.get('name', None)
         if name:
@@ -493,13 +495,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         column_num = int(node.attributes['value'])
         left_margin = 1
         spacing = 0.5
-        
+
         available_width = preso.SLIDE_WIDTH
         available_width -= left_margin * 2
         available_width -= spacing * (column_num - 1)
         column_width = available_width / column_num
         left = left_margin
-        
+
         for frame in self.cur_slide.text_frames:
             node = frame.get_node()
             node.attrib['presentation:class'] = 'outline'
@@ -509,9 +511,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             node.attrib['svg:y'] = '4.577cm'
             node.attrib['svg:height'] = '13.86cm'
             left += column_width + spacing
-        
+
         self.cur_slide.push_element()
-        
+
         attrib = {
             'presentation:style-name':'pr5',
             'draw:layer':'layout',
@@ -523,7 +525,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         }
         self.cur_slide.add_text_frame(attrib)
         self.cur_slide.insert_line_break = 0
-    
+
     # bibliographic elements
     def visit_author(self, node):
         self.visit_attribution(node)

@@ -2,6 +2,6 @@
 # Copyright 2008 Matt Harrison
 # Licensed under Apache License, Version 2.0 (current)
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 __author__ = "matt harrison"
 __email__ = "matthewharrison@gmail.com"

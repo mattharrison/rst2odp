@@ -20,8 +20,8 @@ Simple Slides
 Here's how to make easy slideshows in rst.  Here's a list:
 
 * Part
-* of 
-* a 
+* of
+* a
 * list
 
 Image
@@ -68,7 +68,7 @@ Due to "feature" in ODT spec, it only works (by clicks) on a paragraph or outlin
   * foo
   * bar
   * baz
-  
+
 Text styling
 ------------
 
@@ -95,6 +95,15 @@ This text goes in the third column.
 
 .. slide-layout:: 1column
 
+Master Pages
+-------------
+
+Open(Libre)Office have the notion of Master Pages. If you have a template that has multiple master pages (click on Format -> Slide Design to see the templates. At the bottom is the name). To use a different template for a slide insert::
+
+  .. slide-design:: template-name
+
+*before* a title.
+
 Creating slides
 ---------------
 
@@ -110,7 +119,3 @@ Thanks
 Send feedback/suggestions my way
 
 matthewharrison@gmail.com
-
-
-
-
