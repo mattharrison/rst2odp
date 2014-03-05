@@ -68,6 +68,7 @@ MONO_FONT = 'Courier New' # I like 'Envy Code R'
 NORMAL_FONT = 'Arial'
 PYGMENTS_STYLE = 'default'
 
+# make sure template works with these
 SLIDE_WIDTH = 30 # cm
 SLIDE_HEIGHT = 21
 
@@ -1086,7 +1087,7 @@ class TextFrame(MixedContent):
             'svg:height':'%.2fcm' % (SLIDE_HEIGHT*.66), #'13.86cm',
             'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
             #'svg:y':'%.2fcm' % ((SLIDE_HEIGHT - (SLIDE_HEIGHT*.66))/2),#'4.577cm',
-            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.25),
+            'svg:y':'%.2fcm' % (SLIDE_HEIGHT*.2),
             'presentation:class':'subtitle'
             }
 
