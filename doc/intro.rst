@@ -44,6 +44,20 @@ Source code
   def foo(bar, baz):
     fizzle(bar, baz)
 
+
+More Source code
+----------------
+
+.. class:: small
+
+    .. code-block:: c
+
+        int
+        main(void) {
+            printf("Hello, world\n");
+            return 0;
+        }
+
 Incremental Text
 ----------------
 
@@ -54,7 +68,7 @@ Due to "feature" in ODT spec, it only works (by clicks) on a paragraph or outlin
   * foo
   * bar
   * baz
-
+  
 Text styling
 ------------
 
@@ -64,12 +78,31 @@ Some *strong text* and **emphasized text**
 
 :orange:`s5defs.txt Colors are also supported`
 
+.. slide-layout:: 2column
+
+Multiple Columns
+----------------
+
+This text goes in the first column.
+
+.. column:: 2
+
+This text goes in the second column.
+
+.. column:: 3
+
+This text goes in the third column.
+
+.. slide-layout:: 1column
+
 Creating slides
 ---------------
 
 * install ``rst2odp``
 * plain : ``rst2odp slides.rst output.odp``
 * template : ``rst2odp slides.rst --template-file template/darkGradient.otp output.odp``
+* fonts : ``rst2odp --font="Droid Sans" --mono-font="Droid Sana Mono" slides.rst output.odp``
+* code highlighting style : ``rst2odp --pygments-style=bw slides.rst output.odp``
 
 Thanks
 ------

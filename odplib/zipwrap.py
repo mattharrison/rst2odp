@@ -121,12 +121,16 @@ class ZipWrap(object):
         elif os.path.isdir(self.path):
             self.load_dir(self.path)
 
-    def cat(self, path):
+    def cat(self, path, binary):
         path = self._clean_path(path)
         path = os.path.join(self.src_dir, path)
         if os.path.exists(path):
             if os.path.isfile(path):
-                return open(path, 'rb').read()
+                if binary:
+                    return open(path, 'rb').read()
+                else:
+                    import codecs
+                    return codecs.open(path, 'rb', 'utf-8').read()
             elif os.path.isdir(path):
                 return os.listdir(path)
         else:
