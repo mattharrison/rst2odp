@@ -68,10 +68,12 @@ __email__ = "matthewharrison@gmail.com"
 __license__ = "psf"
 
 class ZipWrap(object):
-    def __init__(self, path):
+    def __init__(self, path, force_exist=False):
         """
         Path can be an existing filename, or just a filename.
         """
+        if force_exist:
+            assert os.path.exists(path)
         self.path = path
         self.src_dir = tempfile.mkdtemp()
         self.cleanup = True
@@ -121,7 +123,7 @@ class ZipWrap(object):
         elif os.path.isdir(self.path):
             self.load_dir(self.path)
 
-    def cat(self, path, binary):
+    def cat(self, path, binary=False):
         path = self._clean_path(path)
         path = os.path.join(self.src_dir, path)
         if os.path.exists(path):

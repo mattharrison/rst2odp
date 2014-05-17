@@ -186,6 +186,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         if self.settings.template_file:
             self.preso.set_template(self.settings.template_file)
+            template = preso.Template(self.settings.template_file)
+            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x.split('cm')[0]) for x in template.get_size()]
 
         if self.settings.page_size:
             preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x) for x in self.settings.page_size.split('x')]

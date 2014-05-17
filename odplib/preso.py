@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Object oriented lib to Open Office Presentations
@@ -142,6 +141,9 @@ def pretty_xml(string_input, add_ns=False):
         s1 = doc.toprettyxml('  ')
     return s1
 
+def ns(namespace, element):
+    return "{%s}%s" % (DOC_CONTENT_ATTRIB['xmlns:' + namespace], element)
+
 
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'
@@ -155,8 +157,6 @@ class Preso(object):
         self._root = None
         self._auto_styles = None
         self._presentation = None
-        self.template_style_data = None
-        self.template_layouts = {}
 
         self._styles_added = {}
 
@@ -164,7 +164,40 @@ class Preso(object):
         self.master_page_name_cover = None
         self.master_page_name_normal = None
 
-        self.extract_master_page_styles(self.styles_xml())
+        # self.extract_master_page_styles(self.styles_xml())
+        self.template_files = []  # ordered list of templates to look for styles in
+        self.default_template = Template()
+        self.default_template.set_style_data(open(os.path.join(DATA_DIR, 'styles.xml')).read())
+
+    def get_para_styles(self, class_name, master_page_name):
+        for t in self.template_files:
+
+            p = t.get_p_properties(master_page_name, class_name)
+            return p
+        return {}
+
+    def get_span_styles(self, class_name, master_page_name):
+        for t in self.template_files:
+            p = t.get_span_properties(master_page_name, class_name)
+            return p
+        return {}
+
+    def get_props(self, class_name, master_page_name=None):
+        if master_page_name is None:
+            for t in self.template_files:
+                # if we have more than one master page assume first is title
+                # and second/last is default
+                all_names = list(t.get_master_page_names())
+                if all_names:
+                    master_page_name = all_names[-1]
+                    break
+        for t in self.template_files:
+            p = t.get_frame_properties(master_page_name, class_name)
+            if p:
+                return p
+        else:
+            return self.default_template.get_frame_properties(master_page_name, class_name)
+
 
     def _init_xml(self):
         self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
@@ -205,9 +238,18 @@ class Preso(object):
         return data
 
     def get_xpath(self, namespace, element):
-        return "{%s}%s" % (DOC_CONTENT_ATTRIB['xmlns:' + namespace], element)
+        return get_xpath(namespace, element)
 
     def set_template(self, template_file):
+        self.template_files.append(Template(template_file))
+        if len(self.template_files) == 1:
+            # going in order of precedence. Can load multiple templates, but first one is default
+            master_pages = list(self.template_files[-1].get_master_page_names())
+            self.master_page_name_cover = master_pages[0]
+            self.master_page_name_normal = master_pages[-1]
+
+
+    def set_template_old(self, template_file):
         # Open the template presentation and extract all the layouts
         # included. We need these to dimension our frames to match.
         template_styles_file = zipwrap.ZipWrap(template_file)
@@ -229,24 +271,24 @@ class Preso(object):
         self.master_page_name_cover = title_name
         self.master_page_name_normal = normal_name
 
-    def extract_master_page_styles(self, styles_xml_string):
+    def extract_master_page_styles_old(self, styles_xml_string):
         self.template_style_data = et.fromstring(styles_xml_string.encode("utf-8"))
 
         # The layouts turned out not to be very useful:
         """
         for layout_el in self.template_style_data.findall('.//' +
-            self.get_xpath('style', 'presentation-page-layout')):
+            ns('style', 'presentation-page-layout')):
 
-            name = layout_el.get(self.get_xpath('style', 'name'))
+            name = layout_el.get(ns('style', 'name'))
             self.template_layouts[name] = layout_el
         """
 
         # But the master pages contain the actual frame dimensions
         # that we need. Go figure.
         for master_el in self.template_style_data.findall('.//' +
-            self.get_xpath('style', 'master-page')):
+            ns('style', 'master-page')):
 
-            name = master_el.get(self.get_xpath('style', 'name'))
+            name = master_el.get(ns('style', 'name'))
             self.template_layouts[name] = master_el
 
     def add_otp_style(self, zip_odp, style_file):
@@ -269,22 +311,29 @@ class Preso(object):
         for page in pages:
             yield page.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}master-page-name')
 
-    def get_placeholders(self, master_name):
+    def get_properties(self, master_page_name, class_name):
+        for template in self.template:
+            prop = template.get_frame_properties(master_page_name, class_name)
+            if props:
+                return props
+
+
+    def get_placeholders_old(self, master_name):
         placeholders = {}
 
         master_el = self.template_layouts.get(master_name, None)
         if master_el is not None:
-            # for placeholder in layout_el.iter(self.get_xpath('presentation', 'placeholder')):
-            for placeholder in master_el.iter(self.get_xpath('draw', 'frame')):
-                if (placeholder.get(self.get_xpath('presentation', 'placeholder'))
+            # for placeholder in layout_el.iter(ns('presentation', 'placeholder')):
+            for placeholder in master_el.iter(ns('draw', 'frame')):
+                if (placeholder.get(ns('presentation', 'placeholder'))
                     == 'true'):
 
-                    slot_name = placeholder.get(self.get_xpath('presentation', 'class'))
+                    slot_name = placeholder.get(ns('presentation', 'class'))
                     placeholders[slot_name] = {
-                        'x': placeholder.get(self.get_xpath('svg', 'x')),
-                        'y': placeholder.get(self.get_xpath('svg', 'y')),
-                        'width': placeholder.get(self.get_xpath('svg', 'width')),
-                        'height': placeholder.get(self.get_xpath('svg', 'height')),
+                        'x': placeholder.get(ns('svg', 'x')),
+                        'y': placeholder.get(ns('svg', 'y')),
+                        'width': placeholder.get(ns('svg', 'width')),
+                        'height': placeholder.get(ns('svg', 'height')),
                     }
 
             if not 'outline' in placeholders:
@@ -657,7 +706,7 @@ class Slide(object):
             self.master_page_name = master_page_name
         else:
             self.master_page_name = self._get_master_page_name()
-        self.placeholders = self.preso.get_placeholders(self.master_page_name)
+        #self.placeholders = self.preso.get_placeholders(self.master_page_name)
 
         self.element_stack = [] # allow us to push pop
         self.cur_element = None # if we write it could be to title,
@@ -670,6 +719,15 @@ class Slide(object):
         self._page = None
 
         self._init_xml()
+
+    def get_para_styles(self, class_name):
+        return self.preso.get_para_styles(class_name, self.master_page_name)
+
+    def get_span_styles(self, class_name):
+        return self.preso.get_span_styles(class_name, self.master_page_name)
+
+    def get_props(self, class_name):
+        return self.preso.get_props(class_name, self.master_page_name)
 
     def insert_line_breaks(self):
         """
@@ -800,8 +858,8 @@ class Slide(object):
         self._page.set('presentation:presentation-page-layout-name',
             layout_name)
 
-    def get_placeholders(self):
-        return self.placeholders
+    # def get_placeholders(self):
+    #     return self.placeholders
 
     def get_node(self):
         """return etree Element representing this slide"""
@@ -899,6 +957,9 @@ class Slide(object):
             self.cur_element.parent_of(name)
 
 class MixedContent(object):
+    """
+    An area that supports writing to
+    """
     def __init__(self, slide, name, attrib=None):
         self._default_align = 'start'
         self.slide = slide
@@ -1002,12 +1063,19 @@ class MixedContent(object):
             return
         self.cur_node = self.cur_node.parent
 
+    def get_para_styles(self):
+        return {'fo:text-align':self._default_align}
+
+    def get_span_styles(self):
+        return {}
+
+
     def _add_styles(self, add_paragraph=True, add_text=True):
         """
         Adds paragraph and span wrappers if necessary based on style
         """
-        p_styles = {'fo:text-align':self._default_align}
-        t_styles = {}
+        p_styles = self.get_para_styles()
+        t_styles = self.get_span_styles()
         for s in self.slide.pending_styles:
             if isinstance(s, ParagraphStyle):
                 p_styles.update(s.styles)
@@ -1169,15 +1237,15 @@ class PictureFrame(MixedContent):
 
 class TextFrame(MixedContent):
     def __init__(self, slide, attrib=None):
-        placeholders = slide.get_placeholders()
+        props = slide.get_props('outline')
         attrib = attrib or {
-            'presentation:style-name':'Default-outline1',
-            'draw:layer':'layout',
-            'svg:width': placeholders['outline']['width'],
-            'svg:height': placeholders['outline']['height'],
-            'svg:x': placeholders['outline']['x'],
-            'svg:y': placeholders['outline']['y'],
-            'presentation:class':'outline'
+            'presentation:style-name':props.get('style-name', 'Default-outline1'),
+            'draw:layer':props.get('layer', 'layout'),
+            'svg:width': props['width'],
+            'svg:height': props['height'],
+            'svg:x': props['x'],
+            'svg:y': props['y'],
+            'presentation:class':props.get('class', 'outline')
             }
 
         MixedContent.__init__(self, slide,  'draw:frame', attrib=attrib)
@@ -1197,19 +1265,25 @@ class TextFrame(MixedContent):
 
 class TitleFrame(TextFrame):
     def __init__(self, slide, attrib=None):
-        placeholders = slide.get_placeholders()
+        props = slide.get_props('title')
         attrib = attrib or {
-            'presentation:style-name':'Default-title',
-            'draw:layer':'layout',
-            'svg:width': placeholders['title']['width'],
-            'svg:height': placeholders['title']['height'],
-            'svg:x': placeholders['title']['x'],
-            'svg:y': placeholders['title']['y'],
-            'presentation:class':'title'
+            'presentation:style-name':props.get('style-name', 'Default-title'),
+            'draw:layer':props.get('layer', 'layout'),
+            'svg:width': props['width'],
+            'svg:height': props['height'],
+            'svg:x': props['x'],
+            'svg:y': props['y'],
+            'presentation:class':props.get('class', 'title')
             }
 
         TextFrame.__init__(self, slide, attrib)
         self._default_align = 'center'
+
+    def get_para_styles(self):
+        return self.slide.get_para_styles('title')
+
+    def get_span_styles(self):
+        return self.slide.get_span_styles('title')
 
 class NotesFrame(TextFrame):
     def __init__(self, slide, attrib=None):
@@ -1616,6 +1690,62 @@ class TableFrame(MixedContent):
         elif not self._in_tag('table:table-row'):
             self.add_row()
         self.add_node('table:table-cell', attrib)
+
+
+class Template(object):
+    def __init__(self, filepath=None):
+        if filepath:
+            self.set_filepath(filepath)
+
+    def set_filepath(self, filepath):
+        self.filepath = filepath
+        self.zipfile = zipwrap.ZipWrap(filepath, True)
+        self.styles = et.fromstring(self.zipfile.cat('styles.xml').encode('utf-8'))
+        self.content = et.fromstring(self.zipfile.cat('content.xml').encode('utf-8'))
+
+    def set_style_data(self, data):
+        self.styles = et.fromstring(data)
+
+    def get_master_page_names(self):
+        for elem in self.styles.findall('.//' + ns('style', 'master-page')):
+            yield elem.get(ns('style', 'name'))
+
+    def get_size(self, name=None, orientation='landscape'):
+        for elem in self.styles.findall('.//' + ns('style', 'page-layout')):
+            elem_name =  elem.get(ns('style', 'name'))
+            if elem_name == name or name is None:
+                for child in elem:
+                    if child.tag == ns('style', 'page-layout-properties') and child.get(ns('style', 'print-orientation')) == orientation:
+                        return child.get(ns('fo', 'page-width')), \
+                            child.get(ns('fo', 'page-height'))
+        return None, None
+
+    def _get_frame_properties(self, style_name, class_name, sub_elem, debug=False):
+        xpath = './/' + ns('style', 'master-page') + '[@' + ns('style', 'name') + "='{}']/".format(style_name) + ns('draw', 'frame') + '[@' + ns('presentation', 'class') + "='{}']".format(class_name) + (("//"+sub_elem) if sub_elem else '')
+        if debug:
+            print "XPATH", xpath
+        for elem in self.styles.findall(xpath):
+            return dict((key.split('}')[-1], value) for key, value in
+                        elem.items())
+
+    def get_frame_properties(self, style_name, class_name):
+        return self._get_frame_properties(style_name, class_name, '')
+
+
+    def get_p_properties(self, style_name, class_name):
+        return self._get_frame_properties(style_name, class_name, ns('text', 'p'))
+
+    def get_span_properties(self, style_name, class_name):
+        # first get style-name under frame node
+        span_dict = self._get_frame_properties(style_name, class_name, ns('text', 'span'))
+        style_name = span_dict['style-name']
+        # then look up text-properies under style and return a dict of its' attributes
+        xpath = './/' + ns('style', 'style') + '[@' + ns('style', 'name') + "='{}']/".format(style_name) + ns('style', 'text-properties')
+        node = list(self.styles.findall(xpath))[0]
+        return dict(node.items())
+
+
+
 
 def _test():
     import doctest
