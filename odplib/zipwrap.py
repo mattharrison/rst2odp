@@ -73,7 +73,10 @@ class ZipWrap(object):
         Path can be an existing filename, or just a filename.
         """
         if force_exist:
-            assert os.path.exists(path)
+            full_path = os.path.join(os.getcwd(), path)
+            if not os.path.exists(full_path):
+                raise IOError('File {} missing'.format(path))
+
         self.path = path
         self.src_dir = tempfile.mkdtemp()
         self.cleanup = True

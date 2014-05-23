@@ -211,8 +211,8 @@ class Preso(object):
         style_node.parent = self._auto_styles
 
     def import_slide(self, preso_file, page_num):
-        odp = zipwrap.ZipWrap(preso_file)
-        content = odp.cat('content.xml', False)
+        odp = zipwrap.ZipWrap(preso_file, force_exist=True)
+        content = odp.cat('content.xml', False).encode('utf-8')
         content_tree = et.fromstring(content)
         slides = content_tree.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}body/{urn:oasis:names:tc:opendocument:xmlns:office:1.0}presentation/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
         try:
@@ -220,7 +220,7 @@ class Preso(object):
         except IndexError, e:
             print "Can't find page_num %d only %d slides" %(page_num, len(slides))
             raise
-        if slide_xml:
+        if slide_xml is not None:
             self.slides.append(XMLSlide(self, slide_xml, odp))
 
     def get_data(self, style_file=None):
@@ -623,9 +623,32 @@ class XMLSlide(object):
     def __init__(self, preso, node, odp_zipwrap):
         self.preso = preso
         self.page_node = node
+        self._page = node
         self.footer = None
         self.mangled = self._mangle_name()
         self._init(odp_zipwrap)
+
+    def update_text(self, mapping):
+        """Iterate over nodes, replace text with mapping"""
+        for node in self._page.iter('*'):
+            if node.text or node.tail:
+                for old, new in mapping.items():
+                    if node.text:
+                        node.text = node.text.replace(old, new)
+                    if node.tail:
+                        node.tail = node.tail.replace(old, new)
+
+    def update_image(self, mapping):
+        images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
+        for image in images:
+            path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
+            for old, new in mapping.items():
+                if path == old:
+                    if not os.path.exists(new):
+                        raise IOError('replace-image missing:{}'.format(new))
+                    p = Picture(new)
+                    self.preso._pictures.append(p)
+                    image.attrib['{http://www.w3.org/1999/xlink}href'] = 'Pictures/{}'.format(p.internal_name)
 
     def page_num(self):
         """ not an int, usually 'Slide 1' or 'page1' """
@@ -638,7 +661,6 @@ class XMLSlide(object):
         return name
 
     def _init(self, odp_zipwrap):
-
         # pull pictures out of slide
         images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
         for image in images:
@@ -663,7 +685,7 @@ class XMLSlide(object):
         auto_attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
         found = {}
         # get content.xml automatic-styles
-        content = odp_zipwrap.cat('content.xml', False)
+        content = odp_zipwrap.cat('content.xml', False).encode('utf-8')
         content_node = et.fromstring(content)
         auto_node = content_node.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles')[0]
 
@@ -1721,12 +1743,27 @@ class Template(object):
         return None, None
 
     def _get_frame_properties(self, style_name, class_name, sub_elem, debug=False):
-        xpath = './/' + ns('style', 'master-page') + '[@' + ns('style', 'name') + "='{}']/".format(style_name) + ns('draw', 'frame') + '[@' + ns('presentation', 'class') + "='{}']".format(class_name) + (("//"+sub_elem) if sub_elem else '')
+        xpath = ".//{master_page}[@{name}='{style_name}']/{frame}[@{preso_class}='{class_name}']{subelem}".format(**{
+                'master_page':ns('style', 'master-page'),
+                'name':ns('style', 'name'),
+                'style_name':style_name,
+                'frame':ns('draw', 'frame'),
+                'preso_class':ns('presentation', 'class'),
+                'class_name':class_name,
+                'subelem': ('//{}'.format(sub_elem) if sub_elem else '')
+                }
+            )
+
         if debug:
-            print "XPATH", xpath
+            print "XPATH****\n", xpath
         for elem in self.styles.findall(xpath):
-            return dict((key.split('}')[-1], value) for key, value in
-                        elem.items())
+            res = dict((key.split('}')[-1], value) for key, value in
+                       elem.items())
+            return res
+        master_names = list(self.get_master_page_names())
+        if style_name not in master_names:
+            raise KeyError("Master page name '{}' not in template. Available names:{}".format(style_name, master_names))
+
 
     def get_frame_properties(self, style_name, class_name):
         return self._get_frame_properties(style_name, class_name, '')
@@ -1742,7 +1779,8 @@ class Template(object):
         # then look up text-properies under style and return a dict of its' attributes
         xpath = './/' + ns('style', 'style') + '[@' + ns('style', 'name') + "='{}']/".format(style_name) + ns('style', 'text-properties')
         node = list(self.styles.findall(xpath))[0]
-        return dict(node.items())
+        res = dict(node.items())
+        return res
 
 
 

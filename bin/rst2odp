@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2008-2009 Matt Harrison
 # Licensed under Apache License, Version 2.0 (current)
-import sys
+import json
 import os
+import sys
+
 
 import docutils
 import docutils.utils #hack around circ. dep in io (docutils.10)
@@ -310,6 +312,32 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('footer'):
             self.footer.write(node.astext())
         elif self.at('comment'):
+            txt = node.astext()
+            if txt.startswith('import:'):
+                # example
+                # .. import: path/to/slide.odp 2
+                preso_file, page_num = txt.split(' ')[-2:]
+                self.preso.import_slide(preso_file, int(page_num))
+            elif txt.startswith('replace:'):
+                # example (needs to be proper json (ie double quotes)
+                # .. replace: {"<Author Twitter>":"@__mharrison"}
+                raw = txt[len('replace:'):].strip()
+                mapping = json.loads(txt[len('replace:'):].strip())
+                if not self.cur_slide:
+                    # probably an imported slide
+                    self.preso.slides[-1].update_text(mapping)
+                else:
+                    raise KeyError('Trying to tweak normal slide')
+            elif txt.startswith('replace-image:'):
+                # .. replace-image: Pictures/10000201000000590000004769CC08A3.png img/matt.png
+                old, new = txt.split(' ')[1:]
+                mapping = {old:new}
+                if not self.cur_slide:
+                    # probably an imported slide
+                    self.preso.slides[-1].update_image(mapping)
+                else:
+                    raise KeyError('Trying to tweak normal slide')
+
             pass
         elif self.at('topic'):
             pass
