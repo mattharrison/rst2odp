@@ -169,17 +169,26 @@ class Preso(object):
         self.default_template = Template()
         self.default_template.set_style_data(open(os.path.join(DATA_DIR, 'styles.xml')).read())
 
+    def _init_xml(self):
+        self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
+        o_scripts = sub_el(self._root, 'office:scripts')
+        self._auto_styles = sub_el(self._root, 'office:automatic-styles')
+        o_body = sub_el(self._root, 'office:body')
+        self._presentation = sub_el(o_body, 'office:presentation')
+
     def get_para_styles(self, class_name, master_page_name):
         for t in self.template_files:
 
             p = t.get_p_properties(master_page_name, class_name)
-            return p
+            if p:
+                return p
         return {}
 
     def get_span_styles(self, class_name, master_page_name):
         for t in self.template_files:
             p = t.get_span_properties(master_page_name, class_name)
-            return p
+            if p:
+                return p
         return {}
 
     def get_props(self, class_name, master_page_name=None):
@@ -197,14 +206,6 @@ class Preso(object):
                 return p
         else:
             return self.default_template.get_frame_properties(master_page_name, class_name)
-
-
-    def _init_xml(self):
-        self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
-        o_scripts = sub_el(self._root, 'office:scripts')
-        self._auto_styles = sub_el(self._root, 'office:automatic-styles')
-        o_body = sub_el(self._root, 'office:body')
-        self._presentation = sub_el(o_body, 'office:presentation')
 
     def add_imported_auto_style(self, style_node):
         self._auto_styles.append(style_node)
@@ -440,7 +441,6 @@ class Preso(object):
     def to_xml(self):
         for i, slide in enumerate(self.slides):
             if self.limit_pages and i+1 not in self.limit_pages:
-
                 continue
             if slide.footer:
                 footer_node = slide.footer.get_node()
@@ -617,98 +617,9 @@ class Picture(object):
     def get_data(self):
         return open(self.filepath).read()
 
-class XMLSlide(object):
-    PREFIX = 'IMPORT%d-%s'
-    COUNT = 0
-    def __init__(self, preso, node, odp_zipwrap):
-        self.preso = preso
-        self.page_node = node
-        self._page = node
-        self.footer = None
-        self.mangled = self._mangle_name()
-        self._init(odp_zipwrap)
-
-    def update_text(self, mapping):
-        """Iterate over nodes, replace text with mapping"""
-        for node in self._page.iter('*'):
-            if node.text or node.tail:
-                for old, new in mapping.items():
-                    if node.text:
-                        node.text = node.text.replace(old, new)
-                    if node.tail:
-                        node.tail = node.tail.replace(old, new)
-
-    def update_image(self, mapping):
-        images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
-        for image in images:
-            path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
-            for old, new in mapping.items():
-                if path == old:
-                    if not os.path.exists(new):
-                        raise IOError('replace-image missing:{}'.format(new))
-                    p = Picture(new)
-                    self.preso._pictures.append(p)
-                    image.attrib['{http://www.w3.org/1999/xlink}href'] = 'Pictures/{}'.format(p.internal_name)
-
-    def page_num(self):
-        """ not an int, usually 'Slide 1' or 'page1' """
-        name = self.page_node.attrib.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}name', None)
-        return name
-
-    def _mangle_name(self):
-        name = self.PREFIX%(self.COUNT, self.page_num())
-        self.COUNT += 1
-        return name
-
-    def _init(self, odp_zipwrap):
-        # pull pictures out of slide
-        images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
-        for image in images:
-            path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
-            data = odp_zipwrap.cat(path, True)
-            name = path.split('/')[1]
-            self.preso._pictures.append(ImportedPicture(name, data))
-
-        # pull styles out of content.xml (draw:style-name, draw:text-style-name, text:style-name)
-        styles_to_copy = {} #map of (attr_name, value) to value
-        attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}style-name',
-                      '{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}text-style-name',
-                      '{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name']
-        for node in self.page_node.getiterator():
-            for attr_name in attr_names:
-                style = node.attrib.get(attr_name, None)
-                if style:
-                    styles_to_copy[style] = attr_name
-                    # mangle name
-                    node.attrib[attr_name] = self.mangled + style
-
-        auto_attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
-        found = {}
-        # get content.xml automatic-styles
-        content = odp_zipwrap.cat('content.xml', False).encode('utf-8')
-        content_node = et.fromstring(content)
-        auto_node = content_node.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles')[0]
-
-        for node in auto_node.getchildren():
-            for attr_name in auto_attr_names:
-                attr_value = node.attrib.get(attr_name, None)
-                if  attr_value in styles_to_copy:
-                    found[attr_value] = 1
-                    # mangle name
-                    node.attrib[attr_name] = self.mangled + attr_value
-                    self.preso.add_imported_auto_style(node)
-
-
-
-
-
-    def get_node(self):
-        return self.page_node
-
-
 
 class Slide(object):
-    def __init__(self, preso, page_number=None, master_page_name=''):
+    def __init__(self, preso, page_number=None, master_page_name='', init=True):
         self.title_frame = None
         self.preso = preso
         self.text_frames = []
@@ -739,8 +650,20 @@ class Slide(object):
 
         # xml elements
         self._page = None
+        if init:
+            self._init_xml()
 
-        self._init_xml()
+    def _init_xml(self):
+        mpn = self.master_page_name
+        self._page = el('draw:page', attrib={
+                'draw:name':'page%d' % self.page_number,
+                'draw:style-name':'dp1',
+                'draw:master-page-name':mpn,
+                })
+        self.set_layout('AL1T0')
+        office_forms = sub_el(self._page, 'office:forms',
+                              attrib={'form:automatic-focus':'false',
+                                      'form:apply-design-mode':'false'})
 
     def get_para_styles(self, class_name):
         return self.preso.get_para_styles(class_name, self.master_page_name)
@@ -837,10 +760,6 @@ class Slide(object):
     def pop_element(self):
         self.cur_element = self.element_stack.pop()
 
-    def to_xml(self):
-        node = self.get_node()
-        return to_xml(node)
-
     def _fire_page_number(self, new_num):
         for listener in self.page_number_listeners:
             listener.new_page_num(new_num)
@@ -864,17 +783,6 @@ class Slide(object):
                 return self.preso.master_page_name_normal
             return 'Default'
 
-    def _init_xml(self):
-        mpn = self.master_page_name
-        self._page = el('draw:page', attrib={
-                'draw:name':'page%d' % self.page_number,
-                'draw:style-name':'dp1',
-                'draw:master-page-name':mpn,
-                })
-        self.set_layout('AL1T0')
-        office_forms = sub_el(self._page, 'office:forms',
-                              attrib={'form:automatic-focus':'false',
-                                      'form:apply-design-mode':'false'})
 
     def set_layout(self, layout_name):
         self._page.set('presentation:presentation-page-layout-name',
@@ -882,6 +790,10 @@ class Slide(object):
 
     # def get_placeholders(self):
     #     return self.placeholders
+
+    def to_xml(self):
+        node = self.get_node()
+        return to_xml(node)
 
     def get_node(self):
         """return etree Element representing this slide"""
@@ -977,6 +889,113 @@ class Slide(object):
         """
         if self.cur_element:
             self.cur_element.parent_of(name)
+
+
+class XMLSlide(Slide):
+    PREFIX = 'IMPORT%d-%s'
+    COUNT = 0
+    def __init__(self, preso, node, odp_zipwrap):
+        Slide.__init__(self, preso, init=False)
+        self.preso = preso
+        self.page_node = node
+        self._page = node
+        self.footer = None
+        self.mangled = self._mangle_name()
+        self._init(odp_zipwrap)
+        self.notes_frame = None
+        self.page_number = len(preso.slides)
+        # self.master_page_name = self._get_master_page_name()
+        # self.page_number_listeners = []
+        # self.element_stack = []
+        # self.pending_styles = []
+
+    def _init(self, odp_zipwrap):
+        # pull pictures out of slide
+        images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
+        for image in images:
+            path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
+            data = odp_zipwrap.cat(path, True)
+            name = path.split('/')[1]
+            self.preso._pictures.append(ImportedPicture(name, data))
+
+        # pull styles out of content.xml (draw:style-name, draw:text-style-name, text:style-name)
+        styles_to_copy = {} #map of (attr_name, value) to value
+        attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}style-name',
+                      '{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}text-style-name',
+                      '{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name']
+        for node in self.page_node.getiterator():
+            for attr_name in attr_names:
+                style = node.attrib.get(attr_name, None)
+                if style:
+                    styles_to_copy[style] = attr_name
+                    # mangle name
+                    node.attrib[attr_name] = self.mangled + style
+
+        auto_attr_names = ['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
+        found = {}
+        # get content.xml automatic-styles
+        content = odp_zipwrap.cat('content.xml', False).encode('utf-8')
+        content_node = et.fromstring(content)
+        auto_node = content_node.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles')[0]
+
+        for node in auto_node.getchildren():
+            for attr_name in auto_attr_names:
+                attr_value = node.attrib.get(attr_name, None)
+                if  attr_value in styles_to_copy:
+                    found[attr_value] = 1
+                    # mangle name
+                    node.attrib[attr_name] = self.mangled + attr_value
+                    self.preso.add_imported_auto_style(node)
+
+    def update_text(self, mapping):
+        """Iterate over nodes, replace text with mapping"""
+        found = False
+        for node in self._page.iter('*'):
+            if node.text or node.tail:
+                for old, new in mapping.items():
+                    if node.text and old in node.text:
+                        node.text = node.text.replace(old, new)
+                        found = True
+                    if node.tail and old in node.tail:
+                        node.tail = node.tail.replace(old, new)
+                        found = True
+        if not found:
+            raise KeyError("Updating text failed with mapping:{}".format(mapping))
+
+    def update_image(self, mapping):
+        images = self.page_node.findall('*/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}image')
+        found = False
+        for image in images:
+            path = image.attrib.get('{http://www.w3.org/1999/xlink}href')
+            for old, new in mapping.items():
+                if path == old:
+                    if not os.path.exists(new):
+                        raise IOError('replace-image missing:{}'.format(new))
+                    found = True
+                    p = Picture(new)
+                    self.preso._pictures.append(p)
+                    image.attrib['{http://www.w3.org/1999/xlink}href'] = 'Pictures/{}'.format(p.internal_name)
+        if not found:
+            raise KeyError("Updating image failed with mapping:{}".format(mapping))
+
+
+    def page_num(self):
+        """ not an int, usually 'Slide 1' or 'page1' """
+        name = self.page_node.attrib.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}name', None)
+        return name
+
+    def _mangle_name(self):
+        name = self.PREFIX%(self.COUNT, self.page_num())
+        self.COUNT += 1
+        return name
+
+
+    def get_node(self):
+        if self.notes_frame:
+            notes = self.notes_frame.get_node()
+            self._page.append(notes)
+            notes.parent = self._page
+        return self._page
 
 class MixedContent(object):
     """
@@ -1755,7 +1774,7 @@ class Template(object):
             )
 
         if debug:
-            print "XPATH****\n", xpath
+            print "XPATH****\n", style_name, class_name, sub_elem, "XP", xpath
         for elem in self.styles.findall(xpath):
             res = dict((key.split('}')[-1], value) for key, value in
                        elem.items())
@@ -1775,6 +1794,8 @@ class Template(object):
     def get_span_properties(self, style_name, class_name):
         # first get style-name under frame node
         span_dict = self._get_frame_properties(style_name, class_name, ns('text', 'span'))
+        if not span_dict:
+            return
         style_name = span_dict['style-name']
         # then look up text-properies under style and return a dict of its' attributes
         xpath = './/' + ns('style', 'style') + '[@' + ns('style', 'name') + "='{}']/".format(style_name) + ns('style', 'text-properties')
