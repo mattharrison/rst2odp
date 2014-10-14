@@ -1744,6 +1744,9 @@ class Template(object):
         self.styles = et.fromstring(self.zipfile.cat('styles.xml').encode('utf-8'))
         self.content = et.fromstring(self.zipfile.cat('content.xml').encode('utf-8'))
 
+    def to_file(self, filename):
+        self.zipfile.zipit(filename)
+
     def set_style_data(self, data):
         self.styles = et.fromstring(data)
 
