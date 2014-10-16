@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0" xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0" xmlns:math="http://www.w3.org/1998/Math/MathML" xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0" xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:ooow="http://openoffice.org/2004/writer" xmlns:oooc="http://openoffice.org/2004/calc" xmlns:dom="http://www.w3.org/2001/xml-events" xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" office:version="1.1">
   <office:styles>
+
     <draw:marker draw:name="Arrow" svg:viewBox="0 0 20 30" svg:d="m10 0-10 30h20z"/>
     <style:default-style style:family="graphic">
       <style:paragraph-properties style:text-autospace="ideograph-alpha" style:punctuation-wrap="simple" style:line-break="strict" style:writing-mode="lr-tb" style:font-independent-line-spacing="false">
@@ -430,6 +431,24 @@
       <presentation:placeholder presentation:object="title" svg:x="2.057cm" svg:y="1.743cm" svg:width="23.911cm" svg:height="3.507cm"/>
       <presentation:placeholder presentation:object="subtitle" svg:x="2.057cm" svg:y="5.838cm" svg:width="23.911cm" svg:height="13.23cm"/>
     </style:presentation-page-layout>
+
+    <!-- Table styles -->
+    <style:style style:name="tufte1" style:family="table-cell" style:parent-style-name="default">
+      <style:paragraph-properties fo:text-align="center" fo:border-bottom="0.9pt solid #ffffff"/>
+      <style:graphic-properties draw:fill="solid" draw:fill-color="#e6e6ff"/>
+    </style:style>
+    <style:style style:name="tufte2" style:family="table-cell" style:parent-style-name="default" >
+    </style:style>
+    <table:table-template text:style-name="tufte">
+      <table:first-row table:style-name="tufte1"/>
+      <table:last-row table:style-name="tufte2"/>
+      <table:first-column table:style-name="tufte2"/>
+      <table:last-column table:style-name="tufte2"/>
+      <table:odd-rows table:style-name="tufte2"/>
+      <table:odd-columns table:style-name="tufte2"/>
+      <table:body table:style-name="tufte2"/>
+    </table:table-template>
+
   </office:styles>
   <office:automatic-styles>
     <style:page-layout style:name="PM0">

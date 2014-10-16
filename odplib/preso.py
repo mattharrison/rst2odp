@@ -818,9 +818,9 @@ class Slide(object):
             self._page.attrib['presentation:use-footer-name'] = self.footer.name
         return self._page
 
-    def add_text_frame(self, attrib=None):
+    def add_text_frame(self, attrib=None, props=None):
         # should adjust width, x based on if existing boxes
-        self.text_frames.append(TextFrame(self, attrib))
+        self.text_frames.append(TextFrame(self, attrib, props))
         node = self.text_frames[-1].get_node()
         self._page.append(node)
         node.parent = self._page
@@ -1277,8 +1277,8 @@ class PictureFrame(MixedContent):
 
 
 class TextFrame(MixedContent):
-    def __init__(self, slide, attrib=None):
-        props = slide.get_props('outline')
+    def __init__(self, slide, attrib=None, props=None):
+        props = props or slide.get_props('outline')
         attrib = attrib or {
             'presentation:style-name':props.get('style-name', 'Default-outline1'),
             'draw:layer':props.get('layer', 'layout'),
@@ -1700,6 +1700,19 @@ class TableFrame(MixedContent):
         xlink:type="simple" xlink:show="embed"
                     xlink:actuate="onLoad"/>
       </draw:frame>
+
+    Preset styles go in template-name ie:
+          <table:table table:template-name="lightblue">
+
+    Header styles can be specified like:
+
+    <style:style style:name="ce6" style:family="table-cell">
+      <style:graphic-properties style:repeat="repeat"/>
+      <style:paragraph-properties fo:text-align="center" fo:border-left="0.57pt groove #c5000b" fo:border-right="0.57pt solid #ffffff" fo:border-top="0.57pt solid #ffffff" fo:border-bottom="0.03pt solid #000000"/>
+      <style:text-properties fo:font-size="18pt"/>
+    </style:style>
+
+
     """
     def __init__(self, slide, frame_attrib=None, table_attrib=None):
         self.frame_attrib = frame_attrib or {'draw:style-name':'standard',

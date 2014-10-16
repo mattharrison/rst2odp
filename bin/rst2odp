@@ -216,6 +216,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_list = None
         self.bullet_depth = 0
         self.footer = None
+        self.table_title = None
 
     def _init_slide(self, force=False):
         if force or self.cur_slide is None:
@@ -285,6 +286,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_document = _dumb_depart
 
     def visit_title(self, node):
+        if self.at('table'):
+            return
         if self.at('section') < 2:
             self._init_slide()
         if self.at('topic'):
@@ -295,6 +298,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.add_title_frame()
 
     def depart_title(self, node):
+        if self.at('table'):
+            return
         if self.at('topic'):
             return
         elif self.at('sidebar'):
@@ -309,6 +314,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def visit_Text(self, node):
         if self.bullet_list and not self.at('handout'): # !!!need to deal w/ bullets in handout
             self.bullet_list.write(node.astext())
+        elif self.at('table') and self.at('title'):
+            self.table_title = node.astext()
+            print "TEXT TITLE!!\n", self.table_title
         elif self.at('footer'):
             self.footer.write(node.astext())
         elif self.at('comment'):
@@ -961,17 +969,73 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
 
     def visit_table(self, node):
-        table = preso.TableFrame(self.cur_slide)
+        """
+        Simple:
+
+        <table>
+          <tgroup cols="3"><colspec colwidth="12"/><colspec colwidth="12"/><colspec colwidth="11"/>
+            <thead>
+              <row><entry><paragraph>Header 1</paragraph></entry><entry><paragraph>Header 2</paragraph></entry><entry><paragraph>Header 3</paragraph></entry></row>
+            </thead>
+            <tbody>
+              <row><entry><paragraph>body row 1</paragraph></entry><entry><paragraph>column 2</paragraph></entry><entry><paragraph>column 3</paragraph></entry></row>
+              <row><entry><paragraph>body row 2</paragraph></entry><entry morecols="1"><paragraph>Cells may span columns.</paragraph></entry></row>
+            </tbody>
+          </tgroup>
+        </table>
+
+        Fancy Table:
+
+        <table classes="lightblue">
+          <title>Frozen Delights!</title>
+          <tgroup cols="2"><colspec colwidth="5"/><colspec colwidth="5"/>
+            <thead>
+              <row><entry><paragraph>A</paragraph></entry><entry><paragraph>not A</paragraph></entry></row>
+            </thead>
+            <tbody>
+              <row><entry><paragraph>False</paragraph></entry><entry><paragraph>True</paragraph></entry></row>
+              <row><entry><paragraph>True</paragraph></entry><entry><paragraph>False</paragraph></entry></row>
+            </tbody>
+          </tgroup>
+        </table>"""
+        classes = node.attributes.get('classes', [])
+        if classes:
+            table_attrib = {'table:template-name':classes[0]}
+        else:
+            table_attrib = None
+        print "TABLE CLASSES", classes
+        table = preso.TableFrame(self.cur_slide, table_attrib=table_attrib)
         self.cur_slide.add_table(table)
 
     def depart_table(self, node):
         self.cur_slide.pop_element()
+        if self.table_title:
+            props = self.cur_slide.get_props('outline')
+            props['y'] = '{}cm'.format(.8*preso.SLIDE_HEIGHT)
+            self.cur_slide.add_text_frame(props=props)
+            style = preso.ParagraphStyle(**{'fo:text-align':'center'})
+            tstyle = preso.TextStyle(**{'fo:font-style':'italic'})
+            self.cur_slide.push_style(style)
+            self.cur_slide.push_style(tstyle)
+            self.cur_slide.write(self.table_title)
+            self.cur_slide.pop_style()
+            self.cur_slide.pop_style()
+            self.table_title = None
+
 
     def visit_row(self, node):
+        print "ROW:", node
         self.cur_slide.cur_element.add_row()
 
     def depart_row(self, node):
         pass
+
+    def visit_thead(self, node):
+        return
+        print "HEAD!", node
+        return self.visit_row(node)
+
+    depart_thead = depart_row
 
     def visit_entry(self, node):
         self.cur_slide.cur_element.add_cell()
@@ -979,14 +1043,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def depart_entry(self, node):
         pass
 
+    visit_subtitle = _dumb_visit
+
+    depart_subtitle = _dumb_depart
+
     visit_tgroup = _dumb_visit
     depart_tgroup = _dumb_depart
 
     visit_colspec = _dumb_visit
     depart_colspec = _dumb_depart
-
-    visit_thead = _dumb_visit
-    depart_thead = _dumb_depart
 
     visit_tbody = _dumb_visit
     depart_tbody = _dumb_depart

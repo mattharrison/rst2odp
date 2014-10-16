@@ -33,6 +33,10 @@ nose: $(NOSE)
 $(NOSE): env
 	$(PIP) install nose
 
+.PHONY: tabletest
+tabletest:
+	./bin/rst2odp --traceback -r 3  test/tables.rst /tmp/tables.odp
+
 # --------- PyPi ----------
 
 .PHONY: build
