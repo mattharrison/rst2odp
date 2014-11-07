@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 from odplib import preso
@@ -6,6 +7,12 @@ from odplib import preso
 
 def rename_style(t_file, fromto):
     from_, to_ = fromto.split(':')
+    template_name = os.path.basename(t_file).split('.')[0]
+    if from_ == '1':
+        from_ = '{}1'.format(template_name)
+    if from_ == '2':
+        from_ = '{}2'.format(template_name)
+
     t = preso.Template(t_file)
     page_names = t.get_master_page_names()
     if from_ not in page_names:
@@ -28,18 +35,23 @@ def rename_style(t_file, fromto):
     t.zipfile.touch('styles.xml', preso.to_xml(style_xml))
     t.to_file(t_file)
 
-
-
+def list_styles(t_file):
+    t = preso.Template(t_file)
+    page_names = t.get_master_page_names()
+    print "STYLES: {}".format(list(page_names))
 
 
 def main(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', help='template file')
     parser.add_argument('--rename-style', help="old:new")
+    parser.add_argument('-l', '--list-styles', action="store_true", help="list template styles")
 
     args = parser.parse_args(args)
     if args.rename_style:
         rename_style(args.t, args.rename_style)
+    elif args.list_styles:
+        list_styles(args.t)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

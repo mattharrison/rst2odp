@@ -434,19 +434,22 @@
 
     <!-- Table styles -->
     <style:style style:name="tufte1" style:family="table-cell" style:parent-style-name="default">
-      <style:paragraph-properties fo:text-align="center" fo:border-bottom="0.9pt solid #ffffff"/>
-      <style:graphic-properties draw:fill="solid" draw:fill-color="#e6e6ff"/>
+      <style:paragraph-properties fo:text-align="center" fo:border-bottom="0.9pt solid #000000"/>
+      <style:graphic-properties draw:fill="solid" draw:fill-color="#ffffff"/>
     </style:style>
     <style:style style:name="tufte2" style:family="table-cell" style:parent-style-name="default" >
+      <!-- <style:paragraph-properties fo:text-align="center" fo:border-bottom="0.9pt solid #123456"/> -->
+      <!-- <style:graphic-properties draw:fill="solid" draw:fill-color="#ff00ff"/> -->
     </style:style>
     <table:table-template text:style-name="tufte">
+
+      <!-- <table:last-row table:style-name="tufte2"/> -->
+      <!-- <table:first-column table:style-name="tufte2"/> -->
+      <!-- <table:last-column table:style-name="tufte2"/> -->
+      <table:odd-rows table:style-name="tufte1"/>
+      <!-- <table:odd-columns table:style-name="tufte2"/> -->
+      <!-- <table:body table:style-name="tufte2"/> -->
       <table:first-row table:style-name="tufte1"/>
-      <table:last-row table:style-name="tufte2"/>
-      <table:first-column table:style-name="tufte2"/>
-      <table:last-column table:style-name="tufte2"/>
-      <table:odd-rows table:style-name="tufte2"/>
-      <table:odd-columns table:style-name="tufte2"/>
-      <table:body table:style-name="tufte2"/>
     </table:table-template>
 
   </office:styles>

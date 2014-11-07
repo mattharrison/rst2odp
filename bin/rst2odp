@@ -280,7 +280,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
 
     def visit_document(self, node):
-        if self.settings.report_level >= 3:
+        if self.settings.report_level >= 4:
             print "DOC", node
 
     depart_document = _dumb_depart
@@ -617,6 +617,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_reference(self, node):
         """
+        can be in footnote:
+          <footnote>
+            <label/>
+            <paragraph><reference refuri="...">
+
         <draw:text-box>
           <text:p text:style-name="P4">
             <text:a xlink:href="http://www.yahoo.com/">Yahoo corp</text:a>
@@ -644,7 +649,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 # P0 style. This was most apparent when a link was first word
                 # in a section after a title.
                 self.cur_slide.write("")
-
             self.cur_slide.add_node('text:a', attrib={'xlink:href': '%s' % node['refuri'],
                                                       'xlink:type': 'simple'})
 
@@ -752,7 +756,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_node()
 
     visit_term = visit_strong
-    depart_term = depart_strong
+
+    def depart_term(self, node):
+        self.cur_slide.write(' ')
+        self.depart_strong(node)
 
     def visit_superscript(self, node):
         attribs = {'style:text-position':'super 58%'}
@@ -1003,7 +1010,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             table_attrib = {'table:template-name':classes[0]}
         else:
             table_attrib = None
-        print "TABLE CLASSES", classes
         table = preso.TableFrame(self.cur_slide, table_attrib=table_attrib)
         self.cur_slide.add_table(table)
 
@@ -1024,16 +1030,17 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
 
     def visit_row(self, node):
-        print "ROW:", node
-        self.cur_slide.cur_element.add_row()
+        self.cur_slide.cur_element.add_row({})
+        if self.at('thead'):
+            style = preso.TextStyle(**{'fo:font-weight':'bold'})
+            self.cur_slide.push_style(style)
 
     def depart_row(self, node):
-        pass
+        if self.at('thead'):
+            self.cur_slide.pop_style()
 
     def visit_thead(self, node):
         return
-        print "HEAD!", node
-        return self.visit_row(node)
 
     depart_thead = depart_row
 
