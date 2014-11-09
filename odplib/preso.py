@@ -117,7 +117,7 @@ def sub_el(parent, tag, attrib=None):
     el.parent = parent
     return el
 
-def to_xml(node):
+def to_xml(node, pretty=False):
     """ convert an etree node to xml """
     fout = sio.StringIO()
     #etree = PrefixedWriter(node)
@@ -125,6 +125,8 @@ def to_xml(node):
 
     etree.write(fout)
     xml = fout.getvalue()
+    if pretty:
+        xml = pretty_xml(xml, True)
     return xml
 
 def pretty_xml(string_input, add_ns=False):
@@ -791,9 +793,12 @@ class Slide(object):
     # def get_placeholders(self):
     #     return self.placeholders
 
-    def to_xml(self):
+    def to_xml(self, pretty=False):
         node = self.get_node()
-        return to_xml(node)
+        xml = to_xml(node)
+        if pretty:
+            xml = pretty_xml(xml)
+        return xml
 
     def get_node(self):
         """return etree Element representing this slide"""
@@ -1065,8 +1070,8 @@ class MixedContent(object):
             node = node.parent
         return False
 
-    def to_xml(self):
-        return to_xml(self.node)
+    def to_xml(self, pretty=False):
+        return to_xml(self.node, pretty)
 
     def get_node(self):
         return self.node
@@ -1436,6 +1441,10 @@ class TextStyle(object):
         '''
         self.styles = kw
         self.name = self._gen_name()
+
+    def __repr__(self):
+        return "({} name:{} styles:{})".format(
+            self.__class__, self.name, self.styles)
 
     def _gen_name(self):
         key = self.styles.items()

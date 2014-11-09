@@ -312,7 +312,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
 
     def visit_Text(self, node):
-        if self.bullet_list and not self.at('handout'): # !!!need to deal w/ bullets in handout
+        if self.at('literal_block'):
+            pass
+        elif self.bullet_list and not self.at('handout'): # !!!need to deal w/ bullets in handout
             self.bullet_list.write(node.astext())
         elif self.at('table') and self.at('title'):
             self.table_title = node.astext()
@@ -349,8 +351,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
             pass
         elif self.at('topic'):
-            pass
-        elif self.at('literal_block'):
             pass
         elif self.at('substitution_definition'):
             pass
@@ -446,7 +446,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         p_attribs = self._get_para_attribs(node)
         if p_attribs:
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
-
         attribs = self._get_text_attribs(node)
         if attribs:
             style = preso.TextStyle(**attribs)
@@ -460,7 +459,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth += 1
         if not self.bullet_list:
             # start a new list
-            self.cur_slide.insert_line_breaks()
+            ##self.cur_slide.insert_line_breaks()
+            # constructor below adds pending style!
             self.bullet_list = preso.OutlineList(self.cur_slide)
             self.cur_slide.add_list(self.bullet_list)
         else:
@@ -472,7 +472,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def depart_bullet_list(self, node):
         if self.at('topic'):
             return
-
+        p_attribs = self._get_para_attribs(node)
+        if p_attribs:
+            self.cur_slide.pop_style()
+        attribs = self._get_text_attribs(node)
+        if attribs:
+            self.cur_slide.pop_style()
         classes = node.attributes.get('classes', [])
         if 'handout' in classes:
             self.in_node['handout'] = False
@@ -481,6 +486,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth -= 1
         if self.bullet_depth == 0:
             # done with list
+            self.cur_slide.pop_style()
             self.bullet_list = None
             self.cur_slide.pop_element()
             self.cur_slide.insert_line_break += 1
@@ -903,8 +909,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 self.cur_slide.write(chunk)
                 self.cur_slide.insert_line_break += 1
                 self.cur_slide.insert_line_breaks()
-
-
 
     def depart_literal_block(self, node):
         # pop text-align
