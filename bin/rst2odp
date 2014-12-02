@@ -380,7 +380,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def visit_paragraph(self, node):
         classes =  node.attributes.get('classes', [])
         self._push_handout(classes)
-
+        import pdb; pdb.set_trace()
         ## if 'center' in classes:
         ##     attribs = {'fo:text-align':'center',
         ##                'fo:margin-left':'1.2cm',
@@ -411,7 +411,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('topic'):
             return
         elif self.at('block_quote'):
-            return # block quote adds paragraph style
+            self.add_block_quote(self)
+            #return # block quote adds paragraph style
         elif self.at('doctest_block'):
             pass
 
@@ -433,7 +434,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('topic'):
             return
         elif self.at('block_quote'):
-            return # block quote adds paragraph style
+            self.remove_block_quote(self)
+            #self.cur_slide.parent_of('text:p')
+            #return # block quote adds paragraph style
         else:
             self.cur_slide.parent_of('text:p')
 
@@ -787,7 +790,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_style()
         self.cur_slide.pop_node()
 
-    def visit_block_quote(self, node):
+    visit_block_quote = _dumb_visit
+    depart_block_quote = _dumb_depart
+
+    def add_block_quote(self, node):
         attribs = {'fo:text-align':'start',
                    'fo:margin-left':'1.2cm',
                    'fo:margin-right':'-.9cm',
@@ -795,7 +801,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         style = preso.ParagraphStyle(**attribs)
         self.cur_slide.push_style(style)
 
-    def depart_block_quote(self, node):
+    def remove_block_quote(self, node):
         # pop off the text:p
         self.cur_slide.pop_style()
         self.cur_slide.pop_node()
