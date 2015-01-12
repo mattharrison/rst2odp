@@ -77,9 +77,7 @@ class SetSlideDesign(rst.Directive):
     optional_arguments = 0
     final_argument_whitespace = 1
     has_content = False
-    #
-    # See visit_literal_block for code that processes the node
-    #   created here.
+
     def run(self):
         design = self.arguments[0]
         design_block = nodes.docinfo(name="slide-design", value=design)
@@ -92,9 +90,7 @@ class SetSlideLayout(rst.Directive):
     optional_arguments = 0
     final_argument_whitespace = 1
     has_content = False
-    #
-    # See visit_literal_block for code that processes the node
-    #   created here.
+
     def run(self):
         layout = self.arguments[0]
         layout_block = nodes.docinfo(name="slide-layout", value=layout)
@@ -107,9 +103,7 @@ class SetColumn(rst.Directive):
     optional_arguments = 0
     final_argument_whitespace = 1
     has_content = False
-    #
-    # See visit_literal_block for code that processes the node
-    #   created here.
+
     def run(self):
         column = self.arguments[0]
         column_block = nodes.docinfo(name="column", value=column)
@@ -124,9 +118,7 @@ class ImportSlideBlock(rst.Directive):
     optional_arguments = 0
     has_content = False
     node_class = ImportNode
-    #
-    # See visit_literal_block for code that processes the node
-    #   created here.
+
     def run(self):
         odp_path = self.arguments[0]
         page_num = self.arguments[1]
@@ -265,7 +257,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def default_visit(self, node):
         if self.settings.report_level >= 3:
             print "ERR! NODE", node, node.tagname
-        raise NotImplementedError('node is %r, tag is %s' % (node, node.tagname))
+        raise NotImplementedError('node is %r, tag is %s, text: %s' % (node, node.tagname, node.parent.astext()))
 
 
     def default_departure(self, node):
@@ -380,7 +372,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def visit_paragraph(self, node):
         classes =  node.attributes.get('classes', [])
         self._push_handout(classes)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         ## if 'center' in classes:
         ##     attribs = {'fo:text-align':'center',
         ##                'fo:margin-left':'1.2cm',
@@ -411,8 +403,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('topic'):
             return
         elif self.at('block_quote'):
-            self.add_block_quote(self)
-            #return # block quote adds paragraph style
+            self.add_block_quote(node)
+            return # block quote adds paragraph style
         elif self.at('doctest_block'):
             pass
 
@@ -434,9 +426,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('topic'):
             return
         elif self.at('block_quote'):
-            self.remove_block_quote(self)
+            self.remove_block_quote(node)
             #self.cur_slide.parent_of('text:p')
-            #return # block quote adds paragraph style
+            return # block quote adds paragraph style
         else:
             self.cur_slide.parent_of('text:p')
 
@@ -489,7 +481,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth -= 1
         if self.bullet_depth == 0:
             # done with list
-            self.cur_slide.pop_style()
+            try:
+                self.cur_slide.pop_style()
+            except IndexError as e:
+                import pdb;pdb.set_trace()
+
             self.bullet_list = None
             self.cur_slide.pop_element()
             self.cur_slide.insert_line_break += 1
@@ -803,8 +799,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def remove_block_quote(self, node):
         # pop off the text:p
-        self.cur_slide.pop_style()
-        self.cur_slide.pop_node()
+        try:
+            self.cur_slide.pop_style()
+            self.cur_slide.pop_node()
+        except IndexError as d:
+            import pdb;pdb.set_trace()
+            print node
 
     def visit_attribution(self, node):
         # right justify
