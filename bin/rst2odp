@@ -340,8 +340,22 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 self.preso.slides[-1].update_image(mapping)
                 # else:
                 #     raise KeyError('Trying to tweak normal slide')
+            elif txt.startswith('column:'):
+                # .. column: 4,2x3
+                # given a matrix of 2 width and 3 tall fill in cell 4
+                #
+                # +----+----+
+                # | 1  |  2 |
+                # +----+----+
+                # | 3  |  4 |
+                # +----+----+
+                # | 5  |  6 |
+                # +----+----+
 
-            pass
+                raw = txt[len('column:'):].strip()
+                pos, mat = raw.split(',')
+                w,h = mat.split('x')
+                preso.add_cell(self, *map(int, [pos, w, h]))
         elif self.at('topic'):
             pass
         elif self.at('substitution_definition'):

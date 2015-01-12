@@ -68,7 +68,7 @@ NORMAL_FONT = 'Arial'
 PYGMENTS_STYLE = 'default'
 
 # make sure template works with these
-SLIDE_WIDTH = 30 # cm
+SLIDE_WIDTH = 28 # cm
 SLIDE_HEIGHT = 21
 
 def cwd_decorator(func):
@@ -146,6 +146,31 @@ def pretty_xml(string_input, add_ns=False):
 def ns(namespace, element):
     return "{%s}%s" % (DOC_CONTENT_ATTRIB['xmlns:' + namespace], element)
 
+def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
+    """ Add a text from to current slide """
+    available_width = SLIDE_WIDTH
+    available_width -= left_margin * 2
+    available_width -= padding * (width - 1)
+    column_width = available_width / width
+
+    avail_height = SLIDE_HEIGHT
+    avail_height -= top_margin
+    avail_height -= padding * (height - 1)
+    column_height = avail_height / height
+
+    col_pos = int((pos-1) % width)
+    row_pos = int((pos-1) / width)
+
+    attr = {
+        'presentation:class': 'outline',
+        'presentation:style-name': 'Default-outline1',
+        'svg:width':'{}cm'.format(column_width),
+        'svg:height':'{}cm'.format(column_height),
+        'svg:x':'{}cm'.format(left_margin + (col_pos*column_width + (col_pos -1)*padding)),
+        'svg:y':'{}cm'.format(top_margin + (row_pos*column_height +(row_pos - 1)*padding))
+
+    }
+    preso.cur_slide.add_text_frame(attr)
 
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'
