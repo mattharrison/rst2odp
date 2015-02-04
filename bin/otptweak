@@ -5,32 +5,32 @@ import sys
 from odplib import preso
 
 
-def rename_style(t_file, fromto):
-    from_, to_ = fromto.split(':')
-    template_name = os.path.basename(t_file).split('.')[0]
-    if from_ == '1':
-        from_ = '{}1'.format(template_name)
-    if from_ == '2':
-        from_ = '{}2'.format(template_name)
-
+def rename_style(t_file, fromto, add_prefix=True):
     t = preso.Template(t_file)
-    page_names = t.get_master_page_names()
-    if from_ not in page_names:
-        raise Exception("{} not found in styles: {}".format(to_, str(page_names)))
+    page_names = set(t.get_master_page_names())
+    print "NAMES", list(page_names)
     # update all references
     style_xml = t.styles
     ns = preso.ns
     attrs = [ns('style', 'name'), ns('style', 'parent-style-name'),
              ns('presentation', 'style-name')]
     #import pdb; pdb.set_trace()
-    for node in style_xml.iter():
-        for n in attrs:
-            val = node.get(n)
-            if val and val.startswith(from_):
-                #import pdb; pdb.set_trace()
-                new_val = val.replace(from_, to_)
-                print val, new_val
-                node.set(n, new_val)
+    template_name = os.path.basename(t_file).split('.')[0]
+    chunks = fromto.split(',')
+    for chunk in chunks:
+        from_, to_ = chunk.split(':')
+        if int(from_) and add_prefix:
+            from_ = '{}{}'.format(template_name, from_)
+        if from_ not in page_names:
+            raise Exception("{} not found in python styles: {}".format(from_, str(list(page_names))))
+        for node in style_xml.iter():
+            for n in attrs:
+                val = node.get(n)
+                if val and val.startswith(from_):
+                    #import pdb; pdb.set_trace()
+                    new_val = val.replace(from_, to_)
+                    #print val, new_val
+                    node.set(n, new_val)
     t.styles = style_xml
     t.zipfile.touch('styles.xml', preso.to_xml(style_xml))
     t.to_file(t_file)
@@ -44,12 +44,13 @@ def list_styles(t_file):
 def main(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', help='template file')
-    parser.add_argument('--rename-style', help="old:new")
+    parser.add_argument('--rename-style', help="old:new[,old2:new]")
     parser.add_argument('-l', '--list-styles', action="store_true", help="list template styles")
+    parser.add_argument('-p', '--no-prefix', action="store_true", help="don't add filename to old stylename")
 
     args = parser.parse_args(args)
     if args.rename_style:
-        rename_style(args.t, args.rename_style)
+        rename_style(args.t, args.rename_style, add_prefix=not args.no_prefix)
     elif args.list_styles:
         list_styles(args.t)
 
