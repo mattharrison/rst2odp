@@ -1,0 +1,141 @@
+import argparse
+import os
+import sys
+
+from odplib import preso
+
+ns = preso.ns
+
+# http://books.evc-cit.info/ch02.php
+# http://docs.oasis-open.org/office/v1.2/cd05/OpenDocument-v1.2-cd05-part1.html
+def rename_style(t_file, fromto, add_prefix=True):
+    t = preso.Template(t_file)
+    page_names = set(t.get_master_page_names())
+    print "NAMES", list(page_names)
+    # update all references
+    style_xml = t.styles
+    ns = preso.ns
+    attrs = [ns('style', 'name'), ns('style', 'parent-style-name'),
+             ns('presentation', 'style-name')]
+    #import pdb; pdb.set_trace()
+    template_name = os.path.basename(t_file).split('.')[0]
+    chunks = fromto.split(',')
+    for chunk in chunks:
+        from_, to_ = chunk.split(':')
+        if int(from_) and add_prefix:
+            from_ = '{}{}'.format(template_name, from_)
+        if from_ not in page_names:
+            raise Exception("{} not found in python styles: {}".format(from_, str(list(page_names))))
+        for node in style_xml.iter():
+            for n in attrs:
+                val = node.get(n)
+                if val and val.startswith(from_):
+                    #import pdb; pdb.set_trace()
+                    new_val = val.replace(from_, to_)
+                    #print val, new_val
+                    node.set(n, new_val)
+    t.styles = style_xml
+    t.zipfile.touch('styles.xml', preso.to_xml(style_xml))
+    t.to_file(t_file)
+
+def get_slide_styles(s_file, s_num):
+    # get slides
+    p = preso.Preso.from_file(s_file)
+    # get slide
+    s = p.slides[s_num - 1]
+    # get text
+    # iterator over nodes to find text
+    txt = []
+    print "SLIDE master:{}".format(s.master_page_name)
+
+    nodes_to_track = set([ns('text', 'style-name'),
+                          ns('draw', 'text-style-name'),
+                          ns('presentation', 'style-name'),
+                          ns('draw', 'style-name'),])
+    # get style names to nodes in automatic-styles
+    name_to_style = get_auto_style_mapping(p)
+    styles = {} # map of name to values
+    add_parents(s._page)
+    for node in s._page.iter():
+        node_tag = node.tag.split('}')[-1]
+        if node.tag == ns('draw', 'frame'):
+            print "*FRAME draw:name={}".format(node.attrib.get(ns('draw', 'name')))
+            #print node.attrib
+        if node.text and node.text.strip():
+            print "\tTEXT {} value={}".format(node_tag, node.text)
+            print "parent", node.parent
+            for i, p in enumerate(reversed(list(parent_iter(node)))):
+                tag = p.tag.split('}')[-1]
+                style_name = None
+                for key, value in p.attrib.iteritems():
+                    if key in nodes_to_track:
+                        style_name = value
+                        break
+                else:
+                    print "!!!{} no style {}".format(tag, [x.split('}')[-1] for x in p.attrib.keys()])
+                print "{}{} {}={}".format(" "*i, tag,key[-10:], style_name)
+                if style_name:
+                    print "{}=============".format(" "*i)
+                    print preso.to_xml(name_to_style[style_name])
+                    print "{}=============\n".format(" "*i)
+                else:
+                    print ''
+            print "END DEBUG FOR value=", node.text
+            print "\n"
+
+    #print "\t\tTEXT", ''.join(txt)
+    #print s.to_xml()
+    # get styles from parents of text
+
+def get_auto_style_mapping(p):
+    res = {}
+    def _iter():
+        for child in p._auto_styles:
+            yield child
+        for child in p._styles:
+            yield child
+    for child in _iter():
+        if child.tag == ns('style', 'style'):
+            name = child.attrib[ns('style', 'name')]
+            res[name] = child
+    return res
+
+def parent_iter(elem, include_self=True):
+    if include_self:
+        yield elem
+    while True:
+        try:
+            yield elem.parent
+        except AttributeError as e:
+            break
+        elem = elem.parent
+
+def add_parents(elem):
+    for child in elem:
+        child.parent = elem
+        add_parents(child)
+
+def recursive_node_style_attribs(elem):
+    pass
+
+def list_styles(t_file):
+    t = preso.Template(t_file)
+    page_names = t.get_master_page_names()
+    print "STYLES: {}".format(list(page_names))
+
+
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', help='template/odp file')
+    parser.add_argument('-l', '--list-styles', action="store_true", help="list template styles")
+    parser.add_argument('-n', '--number', help='Show styles for slide number')
+
+
+    args = parser.parse_args(args)
+    if args.number:
+        get_slide_styles(args.t, int(args.number))
+    elif args.list_styles:
+        list_styles(args.t)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

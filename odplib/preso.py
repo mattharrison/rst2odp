@@ -175,7 +175,7 @@ def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'
 
-    def __init__(self):
+    def __init__(self, add_template=True, template_paths=None):
         self.slides = []
         self.limit_pages = [] # can be list of page numbers (not indexes to export)
         self._pictures = [] # list of Picture instances
@@ -183,6 +183,7 @@ class Preso(object):
         # xml elements
         self._root = None
         self._auto_styles = None
+        self._styles = None  # used to hold 'office:styles' node in from_file
         self._presentation = None
 
         self._styles_added = {}
@@ -193,8 +194,41 @@ class Preso(object):
 
         # self.extract_master_page_styles(self.styles_xml())
         self.template_files = []  # ordered list of templates to look for styles in
-        self.default_template = Template()
-        self.default_template.set_style_data(open(os.path.join(DATA_DIR, 'styles.xml')).read())
+
+        if add_template:
+            self.default_template = Template()
+            self.default_template.set_style_data(open(os.path.join(DATA_DIR, 'styles.xml')).read())
+        elif template_paths:
+            for p in template_paths:
+                self.set_template(p)
+
+    @classmethod
+    def from_file(cls, path):
+        zipfile = zipwrap.ZipWrap(path, True)
+        styles = et.fromstring(zipfile.cat('styles.xml').encode('utf-8'))
+        content = et.fromstring(zipfile.cat('content.xml').encode('utf-8'))
+        p = Preso(add_template=False, template_paths=[path])
+        if content.tag != ns('office', 'document-content'):
+            print "WRONG ROOT ELEM!", content.tag, 'expected', ns('office', 'document-content')
+            sys.exit()
+        p._root = content
+        # content styles
+        print [x.tag for x in styles]
+        p._styles = [x for x in styles if x.tag == ns('office', 'styles')][0]
+        p._auto_styles = [x for x in content if x.tag == ns('office', 'automatic-styles')][0]
+        # style styles
+        style_auto_styles = [x for x in styles if x.tag == ns('office', 'automatic-styles')][0]
+        for child in style_auto_styles:
+             p._auto_styles.append(child)
+        print [x.attrib[ns('style', 'name')] for x in p._auto_styles] #         for child in p._auto_styles:
+
+        p._presentation = content.find('*/{}'.format(ns('office', 'presentation')))
+        for i, node in enumerate(
+            content.findall('*//{}'.format(ns('draw', 'page')))):
+            s = Slide.from_etree_node(p, node, i+1)
+            p.slides.append(s)
+
+        return p
 
     def _init_xml(self):
         self._root = el('office:document-content', attrib=DOC_CONTENT_ATTRIB)
@@ -203,9 +237,27 @@ class Preso(object):
         o_body = sub_el(self._root, 'office:body')
         self._presentation = sub_el(o_body, 'office:presentation')
 
+    def jump_to_frame(self, frame_name):
+        self.slides[-1].jump_to_frame(frame_name)
+
+    def get_master_page_names(self):
+        for t in self.template_files:
+            for n in t.get_master_page_names():
+                yield n
+
+    def get_master_pages(self):
+        for t in self.template_files:
+            for p in t.get_master_pages():
+                yield p
+
+
+    def get_master_page(self, name):
+        for p in self.get_master_pages():
+            if p.get(ns('style', 'name')) == name:
+                return p
+
     def get_para_styles(self, class_name, master_page_name):
         for t in self.template_files:
-
             p = t.get_p_properties(master_page_name, class_name)
             if p:
                 return p
@@ -333,7 +385,7 @@ class Preso(object):
         zip_odp.touch('styles.xml', xml_data)
         return zip_odp
 
-    def get_master_page_names(self, xml_data):
+    def get_master_page_names_old(self, xml_data):
         root = et.fromstring(xml_data)
         pages = root.findall('.//{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
         for page in pages:
@@ -639,8 +691,6 @@ class Picture(object):
             return '%spt' % (self.h * float(self.user_defined['scale'])/100)
         return str(self.h/scale)
 
-
-
     def get_data(self):
         return open(self.filepath).read()
 
@@ -650,7 +700,6 @@ class Slide(object):
         self.title_frame = None
         self.preso = preso
         self.text_frames = []
-        self._cur_text_frame = None
         self.pic_frame = None
         self._preso = preso
         self.footer_frame = None
@@ -677,8 +726,49 @@ class Slide(object):
 
         # xml elements
         self._page = None
-        if init:
+        if master_page_name:
+            self._init_from_master_page(master_page_name)
+        elif init:
             self._init_xml()
+
+    def jump_to_frame(self, frame_name):
+        for t in self.text_frames:
+            if t.name == frame_name:
+                self.cur_element = t  # TODO find correct element, not frame
+                break
+
+
+    def _init_from_master_page(self, master_page_name):
+        # look for master-page element in styles
+        master = self.preso.get_master_page(master_page_name)
+        if master is None:
+            print "MASTER NOT FOUND!", master_page_name
+            print list(self.preso.get_master_page_names())
+            self._init_xml()
+            return
+
+        self._page = el('draw:page', attrib={
+                'draw:name':'page%d' % self.page_number,
+                'draw:style-name':master.get(ns('draw', 'style-name')),
+                'draw:master-page-name':master.get(ns('style', 'name')),
+                })
+        # add frames
+        for child in master:
+            if child.tag == ns('draw', 'frame'):
+                self.add_text_frame(attrib=child.attrib)
+
+
+    @classmethod
+    def from_etree_node(cls, preso, node, page_num):
+        master_page_name = node.attrib.get(ns('draw', 'master-page-name'))
+        s = Slide(preso, page_number=page_num, master_page_name=master_page_name)
+        s._page = node
+
+        for child in node:
+            if child.tag == ns('draw', 'frame'):
+                s.add_text_frame(attrib=child.attrib, props={})
+        return s
+
 
     def _init_xml(self):
         mpn = self.master_page_name
@@ -1308,7 +1398,7 @@ class PictureFrame(MixedContent):
 
 class TextFrame(MixedContent):
     def __init__(self, slide, attrib=None, props=None):
-        props = props or slide.get_props('outline')
+        props = props if props is not None else slide.get_props('outline')
         attrib = attrib or {
             'presentation:style-name':props.get('style-name', 'Default-outline1'),
             'draw:layer':props.get('layer', 'layout'),
@@ -1322,9 +1412,8 @@ class TextFrame(MixedContent):
         MixedContent.__init__(self, slide,  'draw:frame', attrib=attrib)
         self._text_box = sub_el(self.node, 'draw:text-box')
         self.cur_node = self._text_box
-        self.text_styles = ['P1']
-
         self.cur_node = self._text_box
+        self.name = self.node.attrib.get(ns('draw', 'name'), None)
 
 
     def to_xml(self):
@@ -1798,8 +1887,17 @@ class Template(object):
         self.styles = et.fromstring(data)
 
     def get_master_page_names(self):
-        for elem in self.styles.findall('.//' + ns('style', 'master-page')):
+        for elem in self.get_master_pages():
             yield elem.get(ns('style', 'name'))
+
+    def get_master_pages(self):
+        for elem in self.styles.findall('.//' + ns('style', 'master-page')):
+            yield elem
+
+    def get_master_page(self, name):
+        for elem in self.get_master_pages():
+            if elem.get(ns('style', 'name')) == name:
+                return elem
 
     def get_size(self, name=None, orientation='landscape'):
         for elem in self.styles.findall('.//' + ns('style', 'page-layout')):

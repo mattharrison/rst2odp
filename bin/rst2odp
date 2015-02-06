@@ -210,9 +210,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.footer = None
         self.table_title = None
 
-    def _init_slide(self, force=False):
+    def _init_slide(self, force=False, master_page_name=None):
         if force or self.cur_slide is None:
-            master_page_name = self.get_most_recent_docinfo('slide-design')
+            master_page_name = master_page_name or self.get_most_recent_docinfo('slide-design')
 
             layout = self.get_most_recent_docinfo('slide-layout')
             if layout == '1column':
@@ -355,7 +355,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 raw = txt[len('column:'):].strip()
                 pos, mat = raw.split(',')
                 w,h = mat.split('x')
-                preso.add_cell(self, *map(int, [pos, w, h]))
+                self.preso.add_cell(self, *map(int, [pos, w, h]))
+            elif txt.startswith('master-page:'):
+                # use master-page from template
+                page_name = txt[len('master-page:'):].strip()
+                self._init_slide(force=True, master_page_name=page_name)
+            elif txt.startswith('frame:'):
+                # we are writing to a frame is a specific master-page
+                frame = txt[len('frame:'):].strip()
+                self.preso.jump_to_frame(frame)
         elif self.at('topic'):
             pass
         elif self.at('substitution_definition'):
