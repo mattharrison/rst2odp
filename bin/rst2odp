@@ -342,6 +342,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                     mapping = {}
                     mapping['fo:font-family'] = name
                 USER_DEFINED_FONTS[name] = mapping
+            elif txt.startswith('drawing-page-properties:'):
+                # tweak background color ie:
+                # .. drawing-page-properties: {draw:fill-color="#772953"}
+                raw = txt[len('drawing-page-properties:'):].strip()
+                mapping = json.loads(raw)
+                self.preso.slides[-1].update_style(mapping)
             elif txt.startswith('replace:'):
                 # example (needs to be proper json (ie double quotes)
                 # .. replace: {"<Author Twitter>":"@__mharrison"}
@@ -1275,3 +1281,25 @@ if __name__ == "__main__":
         _test()
     else:
         sys.exit(main(sys.argv) or 0)
+
+#
+# Text background color:
+# Add style to content.xml automatic-sytles::
+
+#     <style:style style:name="pr4" style:family="presentation" style:parent-style-name="Default-outline1">
+#       <style:graphic-properties svg:stroke-color="#111111" draw:fill="solid" draw:fill-color="#aecf00" draw:opacity="100%" draw:opacity-name="Transparency_20_6" fo:min-height="8.89cm"/>
+#     </style:style>
+
+#     Use style::
+
+#       <draw:frame presentation:style-name="pr4" draw:text-style-name="P1" draw:layer="backgroundobjects" svg:width="25.199cm" svg:height="11.905cm" draw:transform="skewX (6.20817151426571E-018) rotate (0.0425860337486616) translate (3.175cm 5.886cm)" presentation:class="outline" presentation:user-transformed="true">
+
+# Set background color::
+
+# Add Style to automatic-sytles::
+#     <style:style style:name="dp3" style:family="drawing-page">
+#       <style:drawing-page-properties presentation:background-visible="true" presentation:background-objects-visible="true" draw:fill="solid" draw:fill-color="#772953" draw:fill-image-width="0cm" draw:fill-image-height="0cm" presentation:display-footer="true" presentation:display-page-number="false" presentation:display-date-time="true"/>
+#     </style:style>
+
+# Use style::
+#       <draw:page draw:name="page14" draw:style-name="dp3" draw:master-page-name="Default" presentation:presentation-page-layout-name="AL1T0">

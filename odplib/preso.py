@@ -782,6 +782,26 @@ class Slide(object):
                               attrib={'form:automatic-focus':'false',
                                       'form:apply-design-mode':'false'})
 
+    def update_style(self, mapping):
+        """Use to update fill-color"""
+        default = {'presentation:background-visible':"true",
+        'presentation:background-objects-visible':"true",
+        'draw:fill':"solid",
+        'draw:fill-color':"#772953",
+        'draw:fill-image-width':"0cm",
+        'draw:fill-image-height':"0cm",
+        'presentation:display-footer':"true",
+        'presentation:display-page-number':"false",
+        'presentation:display-date-time':"true"}
+        default.update(mapping)
+        style = PageStyle(**default)
+        node = style.style_node()
+        # add style to automatic-style
+        self.preso._auto_styles.append(node)
+        # update page style-name
+        # found in ._page
+        self._page.set('draw:style-name', node.attrib['style:name'])
+
     def get_para_styles(self, class_name):
         return self.preso.get_para_styles(class_name, self.master_page_name)
 
@@ -1602,6 +1622,10 @@ class ParagraphStyle(TextStyle):
     FAMILY = 'paragraph'
     STYLE_PROP = 'style:paragraph-properties'
     PREFIX = 'P%d'
+
+class PageStyle(TextStyle):
+    FAMILY = 'drawing-page'
+    STYLE_PROP = 'style:drawing-page-properties'
 
 
 if pygmentsAvail:
