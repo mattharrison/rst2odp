@@ -170,7 +170,7 @@ def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
         'svg:y':'{}cm'.format(top_margin + (row_pos*column_height +(row_pos - 1)*padding))
 
     }
-    preso.cur_slide.add_text_frame(attr)
+    preso.slides[-1].add_text_frame(attr)
 
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'

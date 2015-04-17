@@ -49,6 +49,16 @@ S5_SIZES = dict(
     tiny='18pt'
 )
 
+
+
+# to specify a font in rst use BOTH the .. font: comment and .. role::
+# .. font: alegreya|{"fo:font-family": "Alegreya"}
+# .. role:: alegreya
+#
+# In the text :alegreya:`tweaked text`
+
+USER_DEFINED_FONTS = {}
+
 class SyntaxHighlightCodeBlock(rst.Directive):
     required_arguments = 1
     optional_arguments = 0
@@ -321,6 +331,17 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 preso_file, page_num = txt.split(' ')[-2:]
                 self.preso.import_slide(preso_file, int(page_num))
                 self.cur_slide = self.preso.slides[-1]
+            elif txt.startswith('font:'):
+                # font name [| {json with TextStyle attributes}]
+                raw = txt[len('font:'):].strip()
+                if '|' in raw:
+                    name, mapping = raw.split('|')
+                    mapping = json.loads(mapping)
+                else:
+                    name = raw
+                    mapping = {}
+                    mapping['fo:font-family'] = name
+                USER_DEFINED_FONTS[name] = mapping
             elif txt.startswith('replace:'):
                 # example (needs to be proper json (ie double quotes)
                 # .. replace: {"<Author Twitter>":"@__mharrison"}
@@ -355,7 +376,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 raw = txt[len('column:'):].strip()
                 pos, mat = raw.split(',')
                 w,h = mat.split('x')
-                self.preso.add_cell(self, *map(int, [pos, w, h]))
+                preso.add_cell(self.preso, *map(int, [pos, w, h]))
             elif txt.startswith('master-page:'):
                 # use master-page from template
                 page_name = txt[len('master-page:'):].strip()
@@ -1162,6 +1183,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 attribs['fo:color'] = S5_COLORS[c]
             elif c in S5_SIZES:
                 attribs['fo:font-size'] = S5_SIZES[c]
+            elif c in USER_DEFINED_FONTS:
+                res = USER_DEFINED_FONTS[c]
+                if isinstance(res, dict):
+                    attribs.update(res)
+                else:
+                    # just a string with font name
+                    attribs['fo:font-family'] = c
         return attribs
 
 def num_string_to_list(numstr):

@@ -50,3 +50,14 @@ upload: env
 .PHONY: clean
 clean:
 	rm -rf dist rst2odp.egg-info
+
+.PHONY: coverage
+coverage:
+	@rm -f .coverage
+	coverage run bin/rst2odp --traceback -r 4 test/reg.rst /tmp/out.odp
+	#	@nosetests --with-coverage --cover-package=mistune --cover-html
+
+
+.PHONY: auto-test
+auto-test:
+	@rerun -v -i .coverage -i cover "make coverage"
