@@ -958,9 +958,9 @@ class Slide(object):
             self._page.attrib['presentation:use-footer-name'] = self.footer.name
         return self._page
 
-    def add_text_frame(self, attrib=None, props=None):
+    def add_text_frame(self, attrib=None, props=None, style_name=None):
         # should adjust width, x based on if existing boxes
-        self.text_frames.append(TextFrame(self, attrib, props))
+        self.text_frames.append(TextFrame(self, attrib, props, style_name))
         node = self.text_frames[-1].get_node()
         self._page.append(node)
         node.parent = self._page
@@ -1417,10 +1417,10 @@ class PictureFrame(MixedContent):
 
 
 class TextFrame(MixedContent):
-    def __init__(self, slide, attrib=None, props=None):
+    def __init__(self, slide, attrib=None, props=None, style_name=None):
         props = props if props is not None else slide.get_props('outline')
         attrib = attrib or {
-            'presentation:style-name':props.get('style-name', 'Default-outline1'),
+            'presentation:style-name': style_name or props.get('style-name', 'Default-outline1'),
             'draw:layer':props.get('layer', 'layout'),
             'svg:width': props['width'],
             'svg:height': props['height'],
@@ -1618,7 +1618,11 @@ class ParagraphStyle(TextStyle):
         CENTER = 'center',
         JUSTIFY = 'justify'
         )
-
+    margin_left = None
+    margin_right = None
+    margin_top = None
+    margin_bottom = None
+    text_indent = None
     FAMILY = 'paragraph'
     STYLE_PROP = 'style:paragraph-properties'
     PREFIX = 'P%d'
@@ -1626,7 +1630,12 @@ class ParagraphStyle(TextStyle):
 class PageStyle(TextStyle):
     FAMILY = 'drawing-page'
     STYLE_PROP = 'style:drawing-page-properties'
+    PREFIX = 'PS%d'
 
+class TextFrameStyle(TextStyle):
+    FAMILY = 'presentation'
+    STYLE_PROP = 'style:graphic-properties'
+    PREFIX = 'TF%d'
 
 if pygmentsAvail:
 

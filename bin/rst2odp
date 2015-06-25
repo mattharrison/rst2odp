@@ -59,6 +59,9 @@ S5_SIZES = dict(
 
 USER_DEFINED_FONTS = {}
 
+USER_DEFINED_TEXTFRAME_CLASSES = {} # map of classname to xml name
+USER_DEFINED_PARAGRAPH_CLASSES = {} # map of classname to mapping
+
 class SyntaxHighlightCodeBlock(rst.Directive):
     required_arguments = 1
     optional_arguments = 0
@@ -348,6 +351,32 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 raw = txt[len('drawing-page-properties:'):].strip()
                 mapping = json.loads(raw)
                 self.preso.slides[-1].update_style(mapping)
+            elif txt.startswith('graphic-properties:'):
+                # tweak color of text frame
+                # creates a class to use
+                # .. graphic-properties: CLASSNAME {"draw:fill-color":"#772953", "draw:opacity":"50%"}
+                #
+                # .. class:: CLASSNAME
+                raw = txt[len('graphic-properties:'):].strip()
+                name, mapping = raw.split(' ', 1)
+                mapping = json.loads(mapping)
+                node = preso.TextFrameStyle(**mapping).style_node()
+                self.preso._auto_styles.append(node)
+                # get name from style
+                USER_DEFINED_TEXTFRAME_CLASSES[name.lower()] = node.attrib['style:name']
+            elif txt.startswith('paragraph-properties:'):
+                # tweak margin of paragraph
+                # creates a class to use
+                # .. paragraph-properties: CLASSNAME {"fo:margin-left":"0.18cm"}
+                #
+                # .. class:: CLASSNAME
+                raw = txt[len('paragraph-properties:'):].strip()
+                name, mapping = raw.split(' ', 1)
+                mapping = json.loads(mapping)
+                # node = preso.ParagraphStyle(**mapping).style_node()
+                # self.preso._auto_styles.append(node)
+                # get name from style
+                USER_DEFINED_PARAGRAPH_CLASSES[name.lower()] = mapping
             elif txt.startswith('replace:'):
                 # example (needs to be proper json (ie double quotes)
                 # .. replace: {"<Author Twitter>":"@__mharrison"}
@@ -418,25 +447,17 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 self.cur_slide.insert_line_breaks()
             self.cur_slide.push_element()
 
+    def handle_self_defined_classes(self, classes):
+        for c in classes:
+            style_name = USER_DEFINED_TEXTFRAME_CLASSES.get(c, None)
+            if style_name:
+                self.cur_slide.add_text_frame(style_name=style_name)
+                print "ADDING CLASS {} {}".format(c, style_name)
+
     def visit_paragraph(self, node):
         classes =  node.attributes.get('classes', [])
+        self.handle_self_defined_classes(classes)
         self._push_handout(classes)
-        # import pdb; pdb.set_trace()
-        ## if 'center' in classes:
-        ##     attribs = {'fo:text-align':'center',
-        ##                'fo:margin-left':'1.2cm',
-        ##                'fo:margin-right':'-.9cm',
-        ##                }
-        ##     style = preso.ParagraphStyle(**attribs)
-        ##     self.cur_slide.push_style(style)
-
-        ## elif 'left' in classes:
-        ##     pass # default
-        ## elif 'right' in classes:
-        ##     attribs = {'fo:text-align':'end',
-        ##                }
-        ##     style = preso.ParagraphStyle(**attribs)
-        ##     self.cur_slide.push_style(style)
         p_attribs = self._get_para_attribs(node)
         if p_attribs:
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
@@ -1178,6 +1199,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                                 'fo:margin-right':'5.9cm',
                                 })
                 #pass # default
+            mapping = USER_DEFINED_PARAGRAPH_CLASSES.get(c, None)
+            if mapping:
+                print "FOUND MAPPING", mapping
+                attribs.update(mapping)
+                # self.cur_slide.add_text_frame(style_name=style_name)
+                # print "ADDING CLASS {} {}".format(c, style_name)
         return attribs
 
 
@@ -1294,7 +1321,9 @@ if __name__ == "__main__":
 
 #       <draw:frame presentation:style-name="pr4" draw:text-style-name="P1" draw:layer="backgroundobjects" svg:width="25.199cm" svg:height="11.905cm" draw:transform="skewX (6.20817151426571E-018) rotate (0.0425860337486616) translate (3.175cm 5.886cm)" presentation:class="outline" presentation:user-transformed="true">
 
-# Set background color::
+# -------------------------
+
+# Set slide background color::
 
 # Add Style to automatic-sytles::
 #     <style:style style:name="dp3" style:family="drawing-page">
@@ -1303,3 +1332,15 @@ if __name__ == "__main__":
 
 # Use style::
 #       <draw:page draw:name="page14" draw:style-name="dp3" draw:master-page-name="Default" presentation:presentation-page-layout-name="AL1T0">
+
+
+# ----------------------
+
+# Text area background
+# <style:style style:name="pr4" style:family="presentation" style:parent-style-name="Default-outline1">
+#       <style:graphic-properties draw:fill="solid" draw:fill-color="#729fcf" draw:opacity="50%" draw:opacity-name="" draw:textarea-vertical-align="top" fo:min-height="12.065cm"/>
+#     </style:style>
+
+# Use Style::
+#     <draw:frame presentation:style-name="pr4" draw:text-style-name="P5" draw:layer="backgroundobjects" svg:width="25.199cm" svg:height="12.065cm" svg:x="0.836cm" svg:y="5.08cm" presentation:class="outline" presentation:user-transformed="true">
+#           <draw:text-
