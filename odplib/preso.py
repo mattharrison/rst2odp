@@ -658,7 +658,6 @@ class Picture(object):
         if measurement is None or measurement == 'cm':
             measurement = 'cm'
             scale = Picture.CM_SCALE
-
         DPCM = 1 # dots per cm
         if 'crop' in self.user_defined.get('classes', []):
             x,y,w,h = imagescale.adjust_crop(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
@@ -666,6 +665,9 @@ class Picture(object):
             x,y,w,h = imagescale.adjust_fit(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
         elif 'fill' in self.user_defined.get('classes', []):
             x,y,w,h = 0,0,SLIDE_WIDTH,SLIDE_HEIGHT
+        elif 'pad' in self.user_defined.get('classes', []):
+            # put 10% pad on sides
+            x,y,w,h = imagescale.adjust_pad(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
         else:
             x,y,w,h = 1.4, 4.6, self.get_width(), self.get_height()
         return [str(foo)+measurement for foo in [x,y,w,h]]

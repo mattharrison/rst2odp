@@ -1,17 +1,17 @@
-from PIL import Image 
+from PIL import Image
 
 CROP = 1 # Fit smallest side to screen (cuts off parts of image)
 FIT = 2 # Fit largest side (leaves black spaces)
 FILL = 3 # Adjust scale to fill (may distort)
-
+PAD = 4 # leave some space around image (use fit with different params)
 
 class ImageScale(object):
     def __init__(self, path):
         self.path = path
 
     def adjust_size(self, dst_x, dst_y, mode=FIT):
-        """ 
-        given a x and y of dest, determine the ration and return
+        """
+        given a x and y of dest, determine the ratio and return
         an (x,y,w,h) for a output image.
         """
         # get image size
@@ -19,7 +19,7 @@ class ImageScale(object):
         width, height = image.size
         if mode == FIT:
             return adjust_crop(dst_x, dst_y, width, height)
-        
+
 def adjust_crop(dst_w, dst_h, img_w, img_h):
     """
     given a x and y of dest, determine the ratio and return
@@ -37,18 +37,18 @@ def adjust_crop(dst_w, dst_h, img_w, img_h):
     dst_h = float(dst_h)
     img_w = float(img_w)
     img_h = float(img_h)
-    
+
     dst_ratio = float(dst_w)/dst_h
-    
+
     img_ratio = float(img_w)/img_h
-    
+
     if dst_ratio > img_ratio:
         scale = dst_w/img_w
         x = 0
         w = dst_w
         h = img_h * scale
         y = dst_h/2 - h/2
-            
+
     elif dst_ratio <= img_ratio:
         scale = dst_h/img_h
         y = 0
@@ -56,6 +56,12 @@ def adjust_crop(dst_w, dst_h, img_w, img_h):
         h = img_h * scale
         x = dst_w/2 - w/2
 
+    return x,y,w,h
+
+def adjust_pad(dst_w, dst_h, img_w, img_h, amount=.1):
+    x, y, w, h = adjust_fit(dst_w * (1-2*amount), dst_h * (1-2*amount), img_w, img_h)
+    x = x + dst_w * amount
+    y = y + dst_h * amount
     return x,y,w,h
 
 def adjust_fit(dst_w, dst_h, img_w, img_h):
@@ -75,12 +81,12 @@ def adjust_fit(dst_w, dst_h, img_w, img_h):
     dst_h = float(dst_h)
     img_w = float(img_w)
     img_h = float(img_h)
-    
+
 
     dst_ratio = float(dst_w)/dst_h
-    
+
     img_ratio = float(img_w)/img_h
-    
+
     if dst_ratio > img_ratio:
         # image is narrower, use height
         y = 0
