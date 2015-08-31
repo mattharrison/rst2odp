@@ -161,16 +161,21 @@ def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
     col_pos = int((pos-1) % width)
     row_pos = int((pos-1) / width)
 
+    w = '{}cm'.format(column_width)
+    h = '{}cm'.format(column_height)
+    x = '{}cm'.format(left_margin + (col_pos*column_width + (col_pos -1)*padding))
+    y = '{}cm'.format(top_margin + (row_pos*column_height +(row_pos - 1)*padding))
     attr = {
         'presentation:class': 'outline',
         'presentation:style-name': 'Default-outline1',
-        'svg:width':'{}cm'.format(column_width),
-        'svg:height':'{}cm'.format(column_height),
-        'svg:x':'{}cm'.format(left_margin + (col_pos*column_width + (col_pos -1)*padding)),
-        'svg:y':'{}cm'.format(top_margin + (row_pos*column_height +(row_pos - 1)*padding))
+        'svg:width':w,
+        'svg:height':h,
+        'svg:x':x,
+        'svg:y':y
 
     }
     preso.slides[-1].add_text_frame(attr)
+    preso.slides[-1].grid_w_h_x_y = (w, h, x, y)
 
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'
@@ -654,22 +659,39 @@ class Picture(object):
         Picture.COUNT += 1
         return name
 
-    def get_xywh(self, measurement=None):
+    def get_xywh(self, measurement=None, slide=None):
+        if slide and slide.grid_w_h_x_y:
+            frame_w, frame_h, frame_x, frame_y = [int(x.replace('cm', '')) for x in slide.grid_w_h_x_y]
+        else:
+            frame_x = 0
+            frame_y = 0
+            frame_w = SLIDE_WIDTH
+            frame_h = SLIDE_HEIGHT
         if measurement is None or measurement == 'cm':
             measurement = 'cm'
             scale = Picture.CM_SCALE
         DPCM = 1 # dots per cm
-        if 'crop' in self.user_defined.get('classes', []):
-            x,y,w,h = imagescale.adjust_crop(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
-        elif 'fit' in self.user_defined.get('classes', []):
-            x,y,w,h = imagescale.adjust_fit(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
-        elif 'fill' in self.user_defined.get('classes', []):
+        classes = self.user_defined.get('classes', [])
+        if 'crop' in classes:
+            x,y,w,h = imagescale.adjust_crop(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
+                frame_w*DPCM, frame_h*DPCM,
+                                             self.w, self.h)
+        elif 'fit' in classes:
+            x,y,w,h = imagescale.adjust_fit(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
+                                            frame_w*DPCM, frame_h*DPCM,
+                                            self.w, self.h)
+        elif 'fill' in classes:
             x,y,w,h = 0,0,SLIDE_WIDTH,SLIDE_HEIGHT
-        elif 'pad' in self.user_defined.get('classes', []):
+        elif 'pad' in classes:
             # put 10% pad on sides
-            x,y,w,h = imagescale.adjust_pad(SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,self.w, self.h)
+            x,y,w,h = imagescale.adjust_pad(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
+                                            frame_w*DPCM, frame_h*DPCM,
+                                            self.w, self.h)
         else:
             x,y,w,h = 1.4, 4.6, self.get_width(), self.get_height()
+        x += frame_x
+        y += frame_y
+        res =  [str(foo)+measurement for foo in [x,y,w,h]]
         return [str(foo)+measurement for foo in [x,y,w,h]]
 
     def get_width(self, measurement=None):
@@ -725,6 +747,7 @@ class Slide(object):
                                 # MixedContent)
 
         self.insert_line_break = 0
+        self.grid_w_h_x_y = None
 
         # xml elements
         self._page = None
@@ -1404,7 +1427,7 @@ class Footer(MixedContent):
 
 class PictureFrame(MixedContent):
     def __init__(self, slide, picture, attrib=None):
-        x,y,w,h = picture.get_xywh()
+        x,y,w,h = picture.get_xywh(slide=slide)
         attrib = attrib or {
             'presentation:style-name':'Default-subtitle',
             'draw:style-name':'gr2',

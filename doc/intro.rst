@@ -65,6 +65,18 @@ Can specify font size
 
   Large text
 
+Grids
+-----
+
+
+.. grid:: 2,3x1
+
+  Put text in a second cell of 3 columns and 1 row
+
+.. grid:: 4,1x4
+
+  Text along bottow cell of 4 rows
+
 Incremental Text
 ----------------
 

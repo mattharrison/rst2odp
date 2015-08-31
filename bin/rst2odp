@@ -124,6 +124,34 @@ class SetColumn(rst.Directive):
 
 rst.directives.register_directive('column', SetColumn)
 
+class grid(nodes.General, nodes.Inline, nodes.Element):
+    pass
+
+class SetGrid(rst.Directive):
+    """
+    allow
+
+    .. grid:: 2,3x1
+
+    3x1 - 3 columns, 1 row
+    2   - Put stuff in 2nd column
+
+    """
+    required_arguments = 1
+    optional_arguments = 0
+    final_argument_whitespace = 1
+    has_content = True
+
+    def run(self):
+        grid_args = self.arguments[0]
+        grid_block = grid(value=grid_args)
+        self.state.nested_parse(self.content, self.content_offset, grid_block)
+        return [grid_block]
+
+rst.directives.register_directive('grid', SetGrid)
+
+
+
 class ImportNode(nodes.General, nodes.Inline, nodes.Element): pass
 
 class ImportSlideBlock(rst.Directive):
@@ -1179,6 +1207,14 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     depart_sidebar = depart_hint
 
+    def visit_grid(self, node):
+        raw = node.attributes.get('value')
+        pos, mat = raw.split(',')
+        w,h = mat.split('x')
+        preso.add_cell(self.preso, *map(int, [pos, w, h]))
+
+    def depart_grid(self, node):
+        self.cur_slide.grid_w_h_x_y = None
 
     def _get_para_attribs(self, node):
         classes = node.attributes.get('classes', [])
