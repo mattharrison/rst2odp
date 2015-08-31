@@ -1212,7 +1212,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         classes = node.attributes.get('classes', [])
         attribs = {}
         for c in classes:
-            if c in S5_COLORS:
+            if c.startswith('font-size'):  # like font-size:200pt
+                size = c.split("-")[-1]
+                attribs['fo:font-size'] = size
+            elif c in S5_COLORS:
                 attribs['fo:color'] = S5_COLORS[c]
             elif c in S5_SIZES:
                 attribs['fo:font-size'] = S5_SIZES[c]

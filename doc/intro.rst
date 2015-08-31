@@ -58,6 +58,13 @@ More Source code
             return 0;
         }
 
+Can specify font size
+---------------------
+
+.. class:: font-size:100pt
+
+  Large text
+
 Incremental Text
 ----------------
 
