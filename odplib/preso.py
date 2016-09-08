@@ -6,9 +6,15 @@ Copyright 2008-2009 Matt Harrison
 Licensed under Apache License, Version 2.0 (current)
 """
 
+import codecs
 import copy
-import cStringIO as sio
-import xml.etree.ElementTree as et
+
+try:
+    from cStringIO import StringIO as Sio
+except ImportError:
+    from io import BytesIO as Sio
+import lxml.etree as et
+
 from xml.dom import minidom
 import os
 import sys
@@ -19,11 +25,11 @@ try:
     from pygments import formatter, lexers
     pygmentsAvail = True
 except:
-    print 'Could not import pygments code highlighting will not work'
+    sys.stderr.write('Could not import pygments code highlighting will not work')
     pygmentsAvail = False
-import zipwrap
+from odplib import zipwrap
 from PIL import Image
-import imagescale
+from odplib import imagescale
 
 DOC_CONTENT_ATTRIB = {
     'office:version': '1.0',
@@ -57,8 +63,17 @@ DOC_CONTENT_ATTRIB = {
 
 NS2PREFIX = {}
 for key, value in DOC_CONTENT_ATTRIB.items():
-    NS2PREFIX[value] = key.split(':')[-1]
-
+    tag = key.split(':')[-1]
+    NS2PREFIX[value] = tag
+NAMESPACES = {}
+for key, value in DOC_CONTENT_ATTRIB.items():
+    tag = key.split(':')[-1]
+    if tag == 'flversion':
+        continue
+    NAMESPACES[tag] = value
+    et.register_namespace(tag, value)
+del key
+del value
 
 TEXT_COUNT = 100
 DATA_DIR =  os.path.join(os.path.dirname(__file__), 'data')
@@ -91,36 +106,63 @@ def cwd_decorator(func):
         return data
     return wrapper
 
-class PrefixedWriter(et.ElementTree):
-    """ hacked to pass NS2PREFIX to _write """
-    def write(self, file, encoding="us-ascii"):
-        assert self._root is not None
-        if not hasattr(file, "write"):
-            file = open(file, "wb")
-        if not encoding:
-            encoding = "us-ascii"
-        elif encoding != "utf-8" and encoding != "us-ascii":
-            file.write("<?xml version='1.0' encoding='%s'?>\n" % encoding)
-        self._write(file, self._root, encoding, NS2PREFIX)
-        #self._write(file, self._root, encoding, {})
+def get_nstag(tag):
+    if tag.startswith('{'):
+        return tag
+    key, tagname = tag.split(':')
+    url = DOC_CONTENT_ATTRIB['xmlns:{}'.format(key)]
+    if url.startswith('urn'):
+        urn = key
+        tag = '{{{}}}{}'.format(url, tagname)
+    else:
+        tag = '{{{}}}{}'.format(url, tagname)
+    return tag
 
-# Wrap etree elements to add parent attribute
+def fix_ns(k):
+    if k.startswith('{'): # don't double ns
+        return k
+    if k == 'xmlns:version' or k == 'office:version':
+        office_url = DOC_CONTENT_ATTRIB['xmlns:office']
+        new_k = '{{{}}}{}'.format(office_url, 'version')
+        return new_k
+    elif ':' in k:
+        ns, name = k.split(':')
+        #url = NAMESPACES[name]
+        key = 'xmlns:' + ns
+        try:
+            url = DOC_CONTENT_ATTRIB[key]
+        except KeyError:
+            key = 'xmlns:' + name
+            url = DOC_CONTENT_ATTRIB[key]
+        new_k = '{{{}}}{}'.format(url, name)
+        return new_k
+    else:
+        return k
+
+def update_attrib(attrib):
+    new_attrib = {}
+    for k in attrib:
+        new_k = fix_ns(k)
+        new_attrib[new_k] = attrib[k]
+    return new_attrib
+
 def el(tag, attrib=None):
     attrib = attrib or {}
-    el = et.Element(tag, attrib)
-    el.parent = None
+    tag = get_nstag(tag)
+    attrib = update_attrib(attrib)
+    el = et.Element(tag, attrib) #, nsmap=NAMESPACES)
     return el
 
 def sub_el(parent, tag, attrib=None):
     attrib = attrib or {}
-    el = et.SubElement(parent, tag, attrib)
-    el.parent = parent
+    tag = get_nstag(tag)
+    attrib = update_attrib(attrib)    
+    el = et.SubElement(parent, tag, attrib) #, nsmap=NAMESPACES)
     return el
 
 def to_xml(node, pretty=False):
     """ convert an etree node to xml """
-    fout = sio.StringIO()
-    #etree = PrefixedWriter(node)
+    fout = Sio()
     etree = et.ElementTree(node)
 
     etree.write(fout)
@@ -177,6 +219,7 @@ def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
     preso.slides[-1].add_text_frame(attr)
     preso.slides[-1].grid_w_h_x_y = (w, h, x, y)
 
+
 class Preso(object):
     mime_type = 'application/vnd.oasis.opendocument.presentation'
 
@@ -202,37 +245,35 @@ class Preso(object):
 
         if add_template:
             self.default_template = Template()
-            self.default_template.set_style_data(open(os.path.join(DATA_DIR, 'styles.xml')).read())
+            with open(os.path.join(DATA_DIR, 'styles.xml'), 'rb') as fin:
+                data = fin.read()
+                self.default_template.set_style_data(data)
         elif template_paths:
             for p in template_paths:
                 self.set_template(p)
 
     @classmethod
     def from_file(cls, path):
-        zipfile = zipwrap.ZipWrap(path, True)
+        zipfile = zipwrap.Zippier(path, True)
         styles = et.fromstring(zipfile.cat('styles.xml').encode('utf-8'))
         content = et.fromstring(zipfile.cat('content.xml').encode('utf-8'))
         p = Preso(add_template=False, template_paths=[path])
         if content.tag != ns('office', 'document-content'):
-            print "WRONG ROOT ELEM!", content.tag, 'expected', ns('office', 'document-content')
+            sys.stderr.write("WRONG ROOT ELEM!", content.tag, 'expected', ns('office', 'document-content'))
             sys.exit()
         p._root = content
         # content styles
-        print [x.tag for x in styles]
         p._styles = [x for x in styles if x.tag == ns('office', 'styles')][0]
         p._auto_styles = [x for x in content if x.tag == ns('office', 'automatic-styles')][0]
         # style styles
         style_auto_styles = [x for x in styles if x.tag == ns('office', 'automatic-styles')][0]
         for child in style_auto_styles:
              p._auto_styles.append(child)
-        print [x.attrib[ns('style', 'name')] for x in p._auto_styles] #         for child in p._auto_styles:
-
         p._presentation = content.find('*/{}'.format(ns('office', 'presentation')))
         for i, node in enumerate(
-            content.findall('*//{}'.format(ns('draw', 'page')))):
-            s = Slide.from_etree_node(p, node, i+1)
+                content.findall('*//{}'.format(ns('draw', 'page'))), 1):
+            s = Slide.from_etree_node(p, node, i)
             p.slides.append(s)
-
         return p
 
     def _init_xml(self):
@@ -254,7 +295,6 @@ class Preso(object):
         for t in self.template_files:
             for p in t.get_master_pages():
                 yield p
-
 
     def get_master_page(self, name):
         for p in self.get_master_pages():
@@ -293,34 +333,33 @@ class Preso(object):
 
     def add_imported_auto_style(self, style_node):
         self._auto_styles.append(style_node)
-        style_node.parent = self._auto_styles
 
     def import_slide(self, preso_file, page_num):
-        odp = zipwrap.ZipWrap(preso_file, force_exist=True)
+        odp = zipwrap.Zippier(preso_file, force_exist=True)
         content = odp.cat('content.xml', False).encode('utf-8')
         content_tree = et.fromstring(content)
         slides = content_tree.findall('{urn:oasis:names:tc:opendocument:xmlns:office:1.0}body/{urn:oasis:names:tc:opendocument:xmlns:office:1.0}presentation/{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
         try:
             slide_xml = slides[page_num - 1]
-        except IndexError, e:
-            print "Can't find page_num %d only %d slides" %(page_num, len(slides))
+        except IndexError as e:
+            sys.stderr.write("Can't find page_num {} only {} slides".format(page_num, len(slides)))
             raise
         if slide_xml is not None:
             self.slides.append(XMLSlide(self, slide_xml, odp))
 
     def get_data(self, style_file=None):
         if style_file and not os.path.exists(style_file):
-            print "template file %s doesn't exist" % style_file
+            sys.stderr.write("template file {} doesn't exist".format(style_file))
             assert False
-        fd, filename = tempfile.mkstemp()
-        zip_odp = self.to_file()
-        if style_file:
-            self.add_otp_style(zip_odp, style_file)
-        zip_odp.zipit(filename)
-        data = open(filename).read()
-        os.close(fd)
-        os.remove(filename)
-        return data
+        with tempfile.NamedTemporaryFile() as fout:
+            filename = fout.name
+            zip_odp = self.to_file(filename, write_style=not style_file)
+            if style_file:
+                self.add_otp_style(zip_odp, style_file)
+            zip_odp.close()
+            with open(filename, 'rb') as fin:
+                data = fin.read()
+                return data
 
     def get_xpath(self, namespace, element):
         return get_xpath(namespace, element)
@@ -334,67 +373,16 @@ class Preso(object):
             self.master_page_name_normal = master_pages[-1]
 
 
-    def set_template_old(self, template_file):
-        # Open the template presentation and extract all the layouts
-        # included. We need these to dimension our frames to match.
-        template_styles_file = zipwrap.ZipWrap(template_file)
-        template_styles_xml = template_styles_file.cat('styles.xml', False)
-        self.extract_master_page_styles(template_styles_xml)
-
-        # Guess that the first master pages used in the template
-        # presentation should be used for the cover page and all other pages,
-        # respectively. If only one master page is used, it's used for both.
-
-        template_content_xml = template_styles_file.cat('content.xml', False).encode('utf-8')
-        master_pages_used = self.get_master_page_names(template_content_xml)
-        names = list(master_pages_used)[:2]
-        if len(names) == 2:
-            title_name, normal_name = names
-        else:
-            title_name, normal_name = names[0], names[0]
-
-        self.master_page_name_cover = title_name
-        self.master_page_name_normal = normal_name
-
-    def extract_master_page_styles_old(self, styles_xml_string):
-        self.template_style_data = et.fromstring(styles_xml_string.encode("utf-8"))
-
-        # The layouts turned out not to be very useful:
-        """
-        for layout_el in self.template_style_data.findall('.//' +
-            ns('style', 'presentation-page-layout')):
-
-            name = layout_el.get(ns('style', 'name'))
-            self.template_layouts[name] = layout_el
-        """
-
-        # But the master pages contain the actual frame dimensions
-        # that we need. Go figure.
-        for master_el in self.template_style_data.findall('.//' +
-            ns('style', 'master-page')):
-
-            name = master_el.get(ns('style', 'name'))
-            self.template_layouts[name] = master_el
-
     def add_otp_style(self, zip_odp, style_file):
         """
         takes the slide content and merges in the style_file
         """
-        style = zipwrap.ZipWrap(style_file)
-        if 'Pictures' in style.cat('', False):
-            for p in style.cat('Pictures', False):
-                picture_file = 'Pictures/'+p
-                zip_odp.touch(picture_file, style.cat(picture_file, True))
+        style = zipwrap.Zippier(style_file)
+        for picture_file in style.ls('Pictures'):
+            zip_odp.write(picture_file, style.cat(picture_file, True))
         xml_data = style.cat('styles.xml', False)
         xml_data = self.override_styles(xml_data)
-        zip_odp.touch('styles.xml', xml_data)
-        return zip_odp
-
-    def get_master_page_names_old(self, xml_data):
-        root = et.fromstring(xml_data)
-        pages = root.findall('.//{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}page')
-        for page in pages:
-            yield page.get('{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}master-page-name')
+        zip_odp.write('styles.xml', xml_data)
 
     def get_properties(self, master_page_name, class_name):
         for template in self.template:
@@ -402,58 +390,23 @@ class Preso(object):
             if props:
                 return props
 
-
-    def get_placeholders_old(self, master_name):
-        placeholders = {}
-
-        master_el = self.template_layouts.get(master_name, None)
-        if master_el is not None:
-            # for placeholder in layout_el.iter(ns('presentation', 'placeholder')):
-            for placeholder in master_el.iter(ns('draw', 'frame')):
-                if (placeholder.get(ns('presentation', 'placeholder'))
-                    == 'true'):
-
-                    slot_name = placeholder.get(ns('presentation', 'class'))
-                    placeholders[slot_name] = {
-                        'x': placeholder.get(ns('svg', 'x')),
-                        'y': placeholder.get(ns('svg', 'y')),
-                        'width': placeholder.get(ns('svg', 'width')),
-                        'height': placeholder.get(ns('svg', 'height')),
-                    }
-
-            if not 'outline' in placeholders:
-                raise ValueError("There is no 'outline' placeholder in "
-                    "slide master '%s', cannot use it" % master_name)
-        else:
-            # use some defaults; TODO provide a way to set these from
-            # the command line.
-            placeholders = {
-                'title': dict(x="2.057cm", y="1.743cm", width="23.911cm",
-                    height="3.507cm"),
-                'outline': dict(x="2.057cm", y="5.838cm", width="23.911cm",
-                    height="13.23cm"),
-            }
-
-        return placeholders
-
-    def to_file(self, filename=None):
+    def to_file(self, filename=None, write_style=True):
         """
         >>> p = Preso()
         >>> z = p.to_file('/tmp/foo.odp')
-        >>> z.cat('/')
-        ['settings.xml', 'META-INF', 'styles.xml', 'meta.xml', 'content.xml', 'mimetype']
+        >>> sorted(z.ls('/'))
+        ['META-INF/manifest.xml', 'content.xml', 'meta.xml', 'mimetype', 'settings.xml', 'styles.xml']
         """
-        out = zipwrap.ZipWrap('')
-        out.touch('mimetype', self.mime_type)
+        out = zipwrap.Zippier(filename, 'w')
+        out.write('mimetype', self.mime_type)
         for p in self._pictures:
-            out.touch('Pictures/%s' % p.internal_name, p.get_data())
-        out.touch('content.xml', self.to_xml())
-        out.touch('styles.xml', self.styles_xml())
-        out.touch('meta.xml', self.meta_xml())
-        out.touch('settings.xml', self.settings_xml())
-        out.touch('META-INF/manifest.xml', self.manifest_xml(out))
-        if filename:
-            out.zipit(filename)
+            out.write('Pictures/%s' % p.internal_name, p.get_data())
+        out.write('content.xml', self.to_xml())
+        if write_style:
+            out.write('styles.xml', self.styles_xml())
+        out.write('meta.xml', self.meta_xml())
+        out.write('settings.xml', self.settings_xml())
+        out.write('META-INF/manifest.xml', self.manifest_xml(out))
         return out
 
     def manifest_xml(self, zip):
@@ -461,12 +414,7 @@ class Preso(object):
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
 """
-        files = zip.cat('/', False)
-        try:
-            files.extend(zip.cat('/Pictures', False))
-        except IOError, e:
-            # it's ok to not have pictures ;)
-            pass
+        files = zip.ls('/')
         for filename in files:
             filetype = ''
             if filename.endswith('.xml'):
@@ -479,15 +427,13 @@ class Preso(object):
                 filetype = 'image/png'
             elif filename == 'Configurations2/':
                 filetype = 'application/vnd.sun.xml.ui.configuration'
-
             content += """ <manifest:file-entry manifest:media-type="%s" manifest:full-path="%s"/> """ % (filetype, filename)
-
         content += """</manifest:manifest>"""
         return content
 
 
     def meta_xml(self):
-        return """<?xml version="1.0" encoding="UTF-8"?>
+        return u"""<?xml version="1.0" encoding="UTF-8"?>
 <office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" office:version="1.1">
   <office:meta>
     <meta:generator>odplib(python)</meta:generator>
@@ -506,21 +452,21 @@ class Preso(object):
 
     def settings_xml(self):
         filename = os.path.join(DATA_DIR, 'settings.xml')
-        return open(filename).read()
+        with open(filename, 'rb') as fin:
+            return fin.read()
 
     def override_styles(self, data):
         if NORMAL_FONT != 'Arial':
             data = data.replace(u'fo:font-family="Arial"',
                                 u'fo:font-family="%s"' %NORMAL_FONT)
-        #if "Arial" in data:
         return data
 
     def styles_xml(self):
         filename = os.path.join(DATA_DIR, 'styles.xml')
-        import codecs
-        data = codecs.open(filename, 'r', 'utf-8').read()
+        with codecs.open(filename, encoding='utf-8') as fin:
+            data = fin.read()
         data = self.override_styles(data)
-        return data
+        return data.encode('utf-8')
 
     def to_xml(self):
         for i, slide in enumerate(self.slides):
@@ -529,10 +475,8 @@ class Preso(object):
             if slide.footer:
                 footer_node = slide.footer.get_node()
                 self._presentation.append(footer_node)
-                footer_node.parent = self._presentation
             node = slide.get_node()
             self._presentation.append(node)
-            node.parent = self._presentation
         return to_xml(self._root)
 
     def add_style(self, style):
@@ -661,7 +605,7 @@ class Picture(object):
 
     def get_xywh(self, measurement=None, slide=None):
         if slide and slide.grid_w_h_x_y:
-            frame_w, frame_h, frame_x, frame_y = [int(x.replace('cm', '')) for x in slide.grid_w_h_x_y]
+            frame_w, frame_h, frame_x, frame_y = [int(float(x.replace('cm', ''))) for x in slide.grid_w_h_x_y]
         else:
             frame_x = 0
             frame_y = 0
@@ -673,20 +617,20 @@ class Picture(object):
         DPCM = 1 # dots per cm
         classes = self.user_defined.get('classes', [])
         if 'crop' in classes:
-            x,y,w,h = imagescale.adjust_crop(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
+            x,y,w,h = imagescale.adjust_crop(
                 frame_w*DPCM, frame_h*DPCM,
-                                             self.w, self.h)
+                self.w, self.h)
         elif 'fit' in classes:
-            x,y,w,h = imagescale.adjust_fit(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
-                                            frame_w*DPCM, frame_h*DPCM,
-                                            self.w, self.h)
+            x,y,w,h = imagescale.adjust_fit(
+                frame_w*DPCM, frame_h*DPCM,
+                self.w, self.h)
         elif 'fill' in classes:
             x,y,w,h = 0,0,SLIDE_WIDTH,SLIDE_HEIGHT
         elif 'pad' in classes:
             # put 10% pad on sides
-            x,y,w,h = imagescale.adjust_pad(#SLIDE_WIDTH*DPCM, SLIDE_HEIGHT*DPCM,
-                                            frame_w*DPCM, frame_h*DPCM,
-                                            self.w, self.h)
+            x,y,w,h = imagescale.adjust_pad(
+                frame_w*DPCM, frame_h*DPCM,
+                self.w, self.h)
         else:
             x,y,w,h = 1.4, 4.6, self.get_width(), self.get_height()
         x += frame_x
@@ -716,7 +660,7 @@ class Picture(object):
         return str(self.h/scale)
 
     def get_data(self):
-        return open(self.filepath).read()
+        return open(self.filepath, 'rb').read()
 
 
 class Slide(object):
@@ -739,7 +683,6 @@ class Slide(object):
             self.master_page_name = master_page_name
         else:
             self.master_page_name = self._get_master_page_name()
-        #self.placeholders = self.preso.get_placeholders(self.master_page_name)
 
         self.element_stack = [] # allow us to push pop
         self.cur_element = None # if we write it could be to title,
@@ -762,13 +705,12 @@ class Slide(object):
                 self.cur_element = t  # TODO find correct element, not frame
                 break
 
-
     def _init_from_master_page(self, master_page_name):
         # look for master-page element in styles
         master = self.preso.get_master_page(master_page_name)
         if master is None:
-            print "MASTER NOT FOUND!", master_page_name
-            print list(self.preso.get_master_page_names())
+            sys.stderr.write("MASTER NOT FOUND! {} Names: {}".format(master_page_name,
+                            list(self.preso.get_master_page_names())))
             self._init_xml()
             return
 
@@ -793,7 +735,6 @@ class Slide(object):
             if child.tag == ns('draw', 'frame'):
                 s.add_text_frame(attrib=child.attrib, props={})
         return s
-
 
     def _init_xml(self):
         mpn = self.master_page_name
@@ -825,7 +766,8 @@ class Slide(object):
         self.preso._auto_styles.append(node)
         # update page style-name
         # found in ._page
-        self._page.set('draw:style-name', node.attrib['style:name'])
+        self._page.set(ns('draw', 'style-name'),
+                       node.attrib[ns('style', 'name')])
 
     def get_para_styles(self, class_name):
         return self.preso.get_para_styles(class_name, self.master_page_name)
@@ -843,7 +785,6 @@ class Slide(object):
         """
         if self.cur_element:
             self.cur_element.line_break()
-            #self.cur_element.write('')
 
     def start_animation(self, anim):
         self.animations.append(anim)
@@ -851,9 +792,10 @@ class Slide(object):
 
     def end_animation(self):
         # jump out of text:p
-        self.parent_of('text:p')
-        if 'text:id' in self.paragraph_attribs:
-            del self.paragraph_attribs['text:id']
+        self.parent_of(ns('text', 'p'))
+        key = ns('text', 'id')
+        if key in self.paragraph_attribs:
+            del self.paragraph_attribs[key]
 
     def push_pending_node(self, name, attr):
         """
@@ -905,14 +847,15 @@ class Slide(object):
         """
         # pictures should be added the the draw:frame element
         self.pic_frame = PictureFrame(self, p)
-        self.pic_frame.add_node('draw:image', attrib={'xlink:href': 'Pictures/' + p.internal_name,
-                                                      'xlink:type':'simple',
-                                                      'xlink:show':'embed',
-                                                      'xlink:actuate':'onLoad' })
+        self.pic_frame.add_node('draw:image',
+            attrib={'xlink:href': 'Pictures/' + p.internal_name,
+                    'xlink:type':'simple',
+                    'xlink:show':'embed',
+                    'xlink:actuate':'onLoad' })
         self._preso._pictures.append(p)
         node =  self.pic_frame.get_node()
         self._page.append(node)
-        node.parent = self._page
+        #node.parent = self._page
 
     def push_element(self):
         """ element push/pop is used to remember previous cur_elem, since
@@ -927,7 +870,7 @@ class Slide(object):
             listener.new_page_num(new_num)
 
     def new_page_num(self, new_num):
-        self._page.attrib['draw:name'] = 'page%d' % self.page_number
+        self._page.attrib[ns('draw', 'name')] = 'page%d' % self.page_number
 
     def _copy(self):
         ''' needs to update page numbers '''
@@ -947,11 +890,8 @@ class Slide(object):
 
 
     def set_layout(self, layout_name):
-        self._page.set('presentation:presentation-page-layout-name',
-            layout_name)
-
-    # def get_placeholders(self):
-    #     return self.placeholders
+        name = '{urn:oasis:names:tc:opendocument:xmlns:presentation:1.0}presentation-page-layout-name'
+        self._page.set(name, layout_name)
 
     def to_xml(self, pretty=False):
         node = self.get_node()
@@ -967,20 +907,17 @@ class Slide(object):
         if self.animations:
             anim_par = el('anim:par', attrib={'presentation:node-type':'timing-root'})
             self._page.append(anim_par)
-            anim_par.parent = self._page
             anim_seq = sub_el(anim_par, 'anim:seq', attrib={'presentation:node-type':'main-sequence'})
             for a in self.animations:
                 a_node = a.get_node()
                 anim_seq.append(a_node)
-                a_node.parent = anim_seq
 
         # add notes now (so they are last)
         if self.notes_frame:
             notes = self.notes_frame.get_node()
             self._page.append(notes)
-            notes.parent = self._page
         if self.footer:
-            self._page.attrib['presentation:use-footer-name'] = self.footer.name
+            self._page.attrib[ns('presentation', 'use-footer-name')] = self.footer.name
         return self._page
 
     def add_text_frame(self, attrib=None, props=None, style_name=None):
@@ -988,7 +925,6 @@ class Slide(object):
         self.text_frames.append(TextFrame(self, attrib, props, style_name))
         node = self.text_frames[-1].get_node()
         self._page.append(node)
-        node.parent = self._page
         self.cur_element = self.text_frames[-1]
         return self.text_frames[-1]
 
@@ -996,7 +932,6 @@ class Slide(object):
         self.title_frame = TitleFrame(self)
         node = self.title_frame.get_node()
         self._page.append(node)
-        node.parent = self._page
         self.cur_element = self.title_frame
         return self.title_frame
 
@@ -1016,11 +951,11 @@ class Slide(object):
             self.add_text_frame()
         self.push_element()
         self.cur_element._text_box.append(bl.node)
-        bl.node.parent = self.cur_element._text_box
         style = bl.style_name
         if style not in self._preso._styles_added:
             self._preso._styles_added[style] = 1
-            self._preso._auto_styles.append(et.fromstring(bl.default_styles())[0])
+            content = bl.default_styles_root()[0]
+            self._preso._auto_styles.append(content)
         self.cur_element = bl
 
     def add_table(self, t):
@@ -1029,7 +964,6 @@ class Slide(object):
         """
         self.push_element()
         self._page.append(t.node)
-        t.node.parent = self._page
         self.cur_element = t
 
     def write(self, text, **kw):
@@ -1042,7 +976,6 @@ class Slide(object):
         if self.cur_element is None:
             self.add_text_frame()
         self.cur_element.add_node(node, attrib)
-
 
     def pop_node(self):
         self.cur_element.pop_node()
@@ -1069,10 +1002,6 @@ class XMLSlide(Slide):
         self._init(odp_zipwrap)
         self.notes_frame = None
         self.page_number = len(preso.slides)
-        # self.master_page_name = self._get_master_page_name()
-        # self.page_number_listeners = []
-        # self.element_stack = []
-        # self.pending_styles = []
 
     def _init(self, odp_zipwrap):
         # pull pictures out of slide
@@ -1154,12 +1083,10 @@ class XMLSlide(Slide):
         self.COUNT += 1
         return name
 
-
     def get_node(self):
         if self.notes_frame:
             notes = self.notes_frame.get_node()
             self._page.append(notes)
-            notes.parent = self._page
         return self._page
 
 class MixedContent(object):
@@ -1186,15 +1113,15 @@ class MixedContent(object):
             return
         node = self.cur_node
         while node.tag != name:
-            node = node.parent
-        self.cur_node = node.parent
+            node = node.getparent()
+        self.cur_node = node.getparent()
 
     def _in_p(self):
         """
         Determine if we are already in a text:p, odp doesn't like
         nested ones too much
         """
-        return self._in_tag('text:p')
+        return self._in_tag(ns('text', 'p'))
 
     def _is_last_child(self, tagname, attributes=None):
         """
@@ -1227,7 +1154,7 @@ class MixedContent(object):
                 elif attributes:
                     return False
                 return True
-            node = node.parent
+            node = node.getparent()
         return False
 
     def to_xml(self, pretty=False):
@@ -1238,19 +1165,17 @@ class MixedContent(object):
 
     def append(self, node):
         self.cur_node.append(node)
-        node.parent = self.cur_node
 
     def _check_add_node(self, parent, name):
         ''' Returns False if bad to make name a child of parent '''
-
-        if name == 'text:a':
-            if parent.tag == 'draw:text-box':
+        if name == ns('text', 'a'):
+            if parent.tag == ns('draw', 'text-box'):
                 return False
         return True
 
     def _add_node(self, parent, name, attrib):
         if not self._check_add_node(parent, name):
-            raise Exception, 'Bad child (%s) for %s)' %(name, parent.tag)
+            raise Exception('Bad child (%s) for %s)' %(name, parent.tag))
         new_node = sub_el(parent, name, attrib)
         return new_node
 
@@ -1262,19 +1187,18 @@ class MixedContent(object):
         return self.cur_node
 
     def pop_node(self):
-        if self.cur_node.parent == self.node:
+        if self.cur_node.getparent() == self.node:
             # Don't pop too far !!
             return
-        if self.cur_node.parent is None:
+        if self.cur_node.getparent() is None:
             return
-        self.cur_node = self.cur_node.parent
+        self.cur_node = self.cur_node.getparent()
 
     def get_para_styles(self):
         return {'fo:text-align':self._default_align}
 
     def get_span_styles(self):
         return {}
-
 
     def _add_styles(self, add_paragraph=True, add_text=True):
         """
@@ -1291,14 +1215,10 @@ class MixedContent(object):
         para = ParagraphStyle(**p_styles)
 
         if add_paragraph or self.slide.paragraph_attribs:
-            p_attrib = {'text:style-name':para.name}
+            p_attrib = {ns('text', 'style-name'):para.name}
             p_attrib.update(self.slide.paragraph_attribs)
-            # if self._is_last_child('text:p', p_attrib):
-            #     children = self.cur_node.getchildren()
-            #     self.cur_node = children[-1]
-            #elif not self._in_tag('text:p', p_attrib):
-            if not self._in_tag('text:p', p_attrib):
-                self.parent_of('text:p')
+            if not self._in_tag(ns('text', 'p'), p_attrib):
+                self.parent_of(ns('text', 'p'))
                 # Create paragraph style first
                 self.slide._preso.add_style(para)
                 self.add_node('text:p', attrib=p_attrib)
@@ -1310,16 +1230,17 @@ class MixedContent(object):
             if children:
                 # if we already are using this text style, reuse the last one
                 last = children[-1]
-                if last.tag == 'text:span' and \
-                  last.attrib['text:style-name'] == text.name and \
+                if last.tag == ns('text', 'span') and \
+                  last.attrib[ns('text', 'style-name')] == text.name and \
                   last.tail is None: # if we have a tail, we can't reuse
                     self.cur_node = children[-1]
                     return
-            if not self._is_node('text:span', {'text:style-name':text.name}):
+            if not self._is_node(ns('text', 'span'),
+                    {ns('text', 'style-name'):text.name}):
                 # Create text style
                 self.slide._preso.add_style(text)
-                self.add_node('text:span', attrib={'text:style-name':text.name})
-
+                self.add_node('text:span',
+                              attrib={'text:style-name':text.name})
 
     def _add_pending_nodes(self):
         for node, attr in self.pending_nodes:
@@ -1330,21 +1251,17 @@ class MixedContent(object):
         """
         for i in range(self.slide.insert_line_break):
             # needs to be inside text:p
-            if not self._in_tag('text:p'):
+            if not self._in_tag(ns('text', 'p')):
                 # we can just add a text:p and no line-break
                 # Create paragraph style first
-                self.add_node('text:p')
-            #else:
-            self.add_node('text:line-break')
+                self.add_node(ns('text', 'p'))
+            self.add_node(ns('text', 'line-break'))
             self.pop_node()
-            if self.cur_node.tag == 'text:p':
+            if self.cur_node.tag == ns('text', 'p'):
                 return
-            if self.cur_node.parent.tag != 'text:p':
+            if self.cur_node.getparent().tag != ns('text', 'p'):
                 self.pop_node()
-
         self.slide.insert_line_break = 0
-
-
 
     def write(self, text, add_p_style=True, add_t_style=True):
         """
@@ -1356,7 +1273,6 @@ class MixedContent(object):
         would be the extra spaces
         """
         self._add_styles(add_p_style, add_t_style)
-        #self.line_break()
         self._add_pending_nodes()
 
         spaces = []
@@ -1384,21 +1300,13 @@ class MixedContent(object):
                 continue
             self._write(letter)
 
-        # might have dangling spaces
-        # if len(spaces) == 1:
-        #     self._write(' ')
-        #elif spaces:
         if spaces:
             num_spaces = len(spaces)
-            ##num_spaces = len(spaces) - 1
-            # write space
-            ##self._write(' ')
             if num_spaces > 1:
                 self.add_node('text:s', {'text:c':str(num_spaces)})
             else:
                 self.add_node('text:s')
             self.pop_node()
-
 
     def _write(self, letter):
         children = self.cur_node.getchildren()
@@ -1410,6 +1318,7 @@ class MixedContent(object):
             cur_text = self.cur_node.text or ''
             self.cur_node.text = cur_text + letter
         self.dirty = True
+
 
 class Footer(MixedContent):
     def __init__(self, slide):
@@ -1424,7 +1333,6 @@ class Footer(MixedContent):
         return self.node
 
 
-
 class PictureFrame(MixedContent):
     def __init__(self, slide, picture, attrib=None):
         x,y,w,h = picture.get_xywh(slide=slide)
@@ -1432,10 +1340,10 @@ class PictureFrame(MixedContent):
             'presentation:style-name':'Default-subtitle',
             'draw:style-name':'gr2',
             'draw:layer':'layout',
-            'svg:width':w, #picture.get_width(),
-            'svg:height':h, #picture.get_height(),
-            'svg:x':x, #'1.4cm',
-            'svg:y':y, #'4.577cm',
+            'svg:width':w, 
+            'svg:height':h,
+            'svg:x':x, 
+            'svg:y':y, 
             }
         attrib = picture.update_frame_attributes(attrib)
         MixedContent.__init__(self, slide, 'draw:frame', attrib=attrib)
@@ -1460,12 +1368,11 @@ class TextFrame(MixedContent):
         self.cur_node = self._text_box
         self.name = self.node.attrib.get(ns('draw', 'name'), None)
 
-
     def to_xml(self):
         return to_xml(self.get_node())
 
     def _in_bullet(self):
-        return self._in_tag('text:list')
+        return self._in_tag(ns('text', 'list'))
 
 
 class TitleFrame(TextFrame):
@@ -1489,6 +1396,7 @@ class TitleFrame(TextFrame):
 
     def get_span_styles(self):
         return self.slide.get_span_styles('title')
+
 
 class NotesFrame(TextFrame):
     def __init__(self, slide, attrib=None):
@@ -1516,7 +1424,6 @@ class NotesFrame(TextFrame):
                 'draw:page-number':'%d'%slide.page_number,
                 'presentation:class':'page'})
         self._preso_notes.append(self.node)
-        self.node.parent = self._preso_notes
 
     def new_page_num(self, new_num):
         self._page_thumbnail.attrib['draw:page-number']='%d'%new_num
@@ -1606,8 +1513,7 @@ class TextStyle(object):
             self.__class__, self.name, self.styles)
 
     def _gen_name(self):
-        key = self.styles.items()
-        key.sort()
+        key = sorted(self.styles.items())
         key = tuple(key)
         if key in self.__class__.ATTRIB2NAME:
             return self.__class__.ATTRIB2NAME[key]
@@ -1695,7 +1601,6 @@ if pygmentsAvail:
                         self.writable.write(part)
                         self.writable.slide.insert_line_break = 1
                         self.writable.slide.insert_line_breaks()
-                        #self.writable.write('') #insert break
                     self.writable.write(parts[-1])
 
                 self.writable.slide.pop_style()
@@ -1705,7 +1610,7 @@ if pygmentsAvail:
 
         def get_style(self, tokentype):
             while not self.style.styles_token(tokentype):
-                tokentype = tokentype.parent
+                tokentype = tokentype.getparent()
             value = self.style.style_for_token(tokentype)
             # default to monospace
             results = {
@@ -1732,7 +1637,9 @@ class OutlineList(MixedContent):
     see the following for lists
     http://books.evc-cit.info/odbook/ch03.html#list-spec-fig
 
-    >>> o = OutlineList()
+    >>> p = Preso()
+    >>> s = Slide(p, page_number=1)
+    >>> o = OutlineList(s)
     >>> o.new_item('dogs')
     >>> o.indent()
     >>> o.new_item('small')
@@ -1743,8 +1650,8 @@ class OutlineList(MixedContent):
     >>> o.dedent()
     >>> o.dedent()
     >>> o.new_item('cats')
-    >>> o.to_xml()
-    '<text:list text:style-name="L1"><text:list_item><text:p text:style-name="P1">dogs</text:p><text:list><text:list_item><text:p text:style-name="P1">small</text:p><text:list><text:list_item><text:p text:style-name="P1">weiner</text:p><text:p text:style-name="P1"> - more junk about German dogs</text:p></text:list_item><text:list_item><text:p text:style-name="P1">fido</text:p></text:list_item></text:list></text:list_item><text:list_item><text:p text:style-name="P1">cats</text:p></text:list_item></text:list></text:list_item></text:list>'
+    >>> o.to_xml().decode('utf-8')
+    '<text:list xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" text:style-name="L2"><text:list-item><text:p text:style-name="P1">dogs</text:p></text:list-item><text:list-item><text:list><text:list-item><text:p text:style-name="P1">small</text:p></text:list-item><text:list-item><text:list><text:list-item><text:p text:style-name="P1">weiner - more junk about German dogs</text:p></text:list-item><text:list-item><text:p text:style-name="P1">fido</text:p></text:list-item></text:list></text:list-item></text:list></text:list-item><text:list-item><text:p text:style-name="P1">cats</text:p></text:list-item></text:list>'
 
     See also:
 http://books.evc-cit.info/odbook/ch03.html#bulleted-numbered-lists-section
@@ -1807,6 +1714,11 @@ http://books.evc-cit.info/odbook/ch03.html#bulleted-numbered-lists-section
     def default_styles(self):
         filename =  os.path.join(DATA_DIR, self.style_file)
         return open(filename).read()
+
+    def default_styles_root(self):
+        filename =  os.path.join(DATA_DIR, self.style_file)
+        return et.parse(filename).getroot()
+
 
 class NumberList(OutlineList):
     def __init__(self, slide):
@@ -1898,10 +1810,9 @@ class TableFrame(MixedContent):
     def __init__(self, slide, frame_attrib=None, table_attrib=None):
         self.frame_attrib = frame_attrib or {'draw:style-name':'standard',
                                              'draw:layer':'layout',
-                                             'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84), #'25.199cm',
-                                             #'svg:height':'13.86cm', #'''1.943cm',
-                                             'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),#'1.4cm',
-                                             'svg:y':'147pt'#'24.577m'
+                                             'svg:width':'%.2fcm' % (SLIDE_WIDTH*.84),
+                                             'svg:x':'%.2fcm' % ((SLIDE_WIDTH - (SLIDE_WIDTH*.84))/2),
+                                             'svg:y':'147pt'
                                              }
         MixedContent.__init__(self, slide, 'draw:frame', attrib=self.frame_attrib)
 
@@ -1920,9 +1831,9 @@ class TableFrame(MixedContent):
 
     def add_cell(self, attrib=None):
         self.slide.insert_line_break = 0
-        if self._in_tag('table:table-cell'):
-            self.parent_of('table:table-cell')
-        elif not self._in_tag('table:table-row'):
+        if self._in_tag(ns('table', 'table-cell')):
+            self.parent_of(ns('table', 'table-cell'))
+        elif not self._in_tag(ns('table', 'table-row')):
             self.add_row()
         self.add_node('table:table-cell', attrib)
 
@@ -1934,12 +1845,12 @@ class Template(object):
 
     def set_filepath(self, filepath):
         self.filepath = filepath
-        self.zipfile = zipwrap.ZipWrap(filepath, True)
+        self.zipfile = zipwrap.Zippier(filepath)
         self.styles = et.fromstring(self.zipfile.cat('styles.xml').encode('utf-8'))
         self.content = et.fromstring(self.zipfile.cat('content.xml').encode('utf-8'))
 
     def to_file(self, filename):
-        self.zipfile.zipit(filename)
+        self.zipfile.close(filename)
 
     def set_style_data(self, data):
         self.styles = et.fromstring(data)
@@ -1980,7 +1891,7 @@ class Template(object):
             )
 
         if debug:
-            print "XPATH****\n", style_name, class_name, sub_elem, "XP", xpath
+            sys.stderr.write("XPATH****\n", style_name, class_name, sub_elem, "XP", xpath)
         for elem in self.styles.findall(xpath):
             res = dict((key.split('}')[-1], value) for key, value in
                        elem.items())
@@ -1992,7 +1903,6 @@ class Template(object):
 
     def get_frame_properties(self, style_name, class_name):
         return self._get_frame_properties(style_name, class_name, '')
-
 
     def get_p_properties(self, style_name, class_name):
         return self._get_frame_properties(style_name, class_name, ns('text', 'p'))
@@ -2008,8 +1918,6 @@ class Template(object):
         node = list(self.styles.findall(xpath))[0]
         res = dict(node.items())
         return res
-
-
 
 
 def _test():

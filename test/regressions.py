@@ -1,19 +1,25 @@
+
+import imp
 import unittest
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
 
 from docutils.readers import standalone
 from docutils.core import Publisher, default_description, \
     default_usage
 
 from types import ModuleType
-rst2odp = ModuleType('rst2odp')
-exec open('../bin/rst2odp') in rst2odp.__dict__
+#rst2odp = ModuleType('rst2odp')
+#exec open('../bin/rst2odp') in rst2odp.__dict__
+rst2odp = imp.load_source('rst2odp', '../bin/rst2odp')
 
 from odplib import preso, zipwrap
 
 class TestRegressions(unittest.TestCase):
 
-    def _to_odp_content(self, rst, xml_filename):
+    def _to_odp_content(self, rst, xml_filename, odp_name='/tmp/out'):
         reader = standalone.Reader()
         reader_name = 'standalone'
         writer = rst2odp.Writer()
@@ -36,19 +42,19 @@ class TestRegressions(unittest.TestCase):
         fin = open('/tmp/in.rst', 'w')
         fin.write(rst)
         fin.close()
-        argv = ['--traceback', '/tmp/in.rst', '/tmp/out']
+        argv = ['--traceback', '/tmp/in.rst', odp_name]
         output = publisher.publish(argv, usage, description, settings_spec, settings_overrides, config_section=config_section, enable_exit_status=enable_exit_status)
         # pull content.xml out of /tmp/out
-        z = zipwrap.ZipWrap('/tmp/out')
+        z = zipwrap.Zippier(odp_name)
         fout = open(xml_filename, 'w')
         content = preso.pretty_xml(z.cat('content.xml'))
         fout.write(content)
         fout.close()
         return content
 
-    def check_output(self, rst, desired, filename='/tmp/foo.xml'):
-        content = self._to_odp_content(rst, filename)
-        self.assert_(_contains_lines(content, desired), "%s should have %s" %(content, desired))
+    def check_output(self, rst, desired, filename='/tmp/foo.xml', outname='/tmp/out'):
+        content = self._to_odp_content(rst, filename, odp_name=outname)
+        self.assertTrue(_contains_lines(content, desired), "%s should have %s" %(content, desired))
         
     def test_basic(self):
         rst = """
@@ -57,10 +63,8 @@ Title
 
 hello world
 """
-        desired = """<text:p text:style-name="P1">
-              hello world
-            </text:p>"""
-        self.check_output(rst, desired)
+        desired = """<text:p text:style-name="P1">hello world</text:p>"""
+        self.check_output(rst, desired, outname='/tmp/basic.odp')
 
     def test_2_paragraphs(self):
         rst = """
@@ -71,15 +75,12 @@ Hello
 
 World
 """
-        desired = """<text:p text:style-name="P1">
-              Hello
-            </text:p>
-            <text:p text:style-name="P1">
-              World
-            </text:p>"""
-        self.check_output(rst, desired, '/tmp/2para.xml')
+        desired = """<text:p text:style-name="P1">Hello</text:p>
+            <text:p text:style-name="P1">World</text:p>"""
 
-    def t2est_mono_block(self):
+        self.check_output(rst, desired, '/tmp/2para.xml', '/tmp/2para.odp')
+
+    def test_mono_block(self):
         rst = """
 From script
 ------------
@@ -92,8 +93,19 @@ Run with::
 
   python hello.py
 """
-        desired='bad'
-        self.check_output(rst, desired, '/tmp/monoblock.xml')
+        desired='''<text:p text:style-name="P1">
+              Make file
+              <text:s/>
+              <text:span text:style-name="T0">hello.py</text:span>
+               with
+            </text:p>
+            <text:p text:style-name="P1">
+              <text:span text:style-name="T0">
+                print &quot;hello world&quot;
+                <text:line-break/>
+              </text:span>
+            </text:p>'''
+        self.check_output(rst, desired, '/tmp/monoblock.xml', outname='/tmp/monoblock.odp')
 
     def tes2t_code_block(self):
         rst = """
@@ -137,7 +149,20 @@ txt before code
 
     a = 3
 """
-        desired='bad'
+        desired='''<text:p text:style-name="P1">
+              <text:span text:style-name="T2">
+                a
+                <text:s/>
+              </text:span>
+              <text:span text:style-name="T4">=</text:span>
+              <text:span text:style-name="T2">
+                <text:s/>
+              </text:span>
+              <text:span text:style-name="T4">3</text:span>
+              <text:span text:style-name="T2">
+                <text:line-break/>
+              </text:span>
+            </text:p>'''
         self.check_output(rst, desired, '/tmp/code.xml')
 
     def te2st_styled_before_code(self):

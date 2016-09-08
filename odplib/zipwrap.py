@@ -1,60 +1,41 @@
 """
 Modeled after unix command line.
 
->>> z = ZipWrap("foo.zip")
+>>> z = Zippier("test/foo.zip", 'w')
 
-Can touch files (preceeding / is optional root is either "" or "/")
+Can write files (preceeding / is optional root is either "" or "/")
 
->>> z.touch("/bar", "hello world\\nstuff")
+>>> z.write("/bar", "hello world\\nstuff")
 
 Can ``cat`` files
 
 >>> z.cat("bar")
-'hello world\\nstuff'
+b'hello world\\nstuff'
 
 Can ``mkdir``
 
 >>> z.mkdir("foo/bar/baz/biz")
 
-Can ``cat`` root directory
->>> z.cat("/")
-['foo', 'bar']
+Can ``ls`` root directory
+>>> z.ls("/")
+['bar', 'foo/bar/baz/biz/']
 
->>> z.touch("foo/bar/baz/junk", "stuff")
->>> z.cat("foo/bar/baz")
-['junk', 'biz']
->>> z.cat("foo/bar/baz/junk")
-'stuff'
->>> z.touch("empty")
->>> z.cat("empty")
-''
+>>> z.write("foo/bar/baz/junk", "stuff")
+>>> z.ls("foo/bar/baz")
+['foo/bar/baz/biz/', 'foo/bar/baz/junk']
 
-Can ``rm``
 
->>> z.rm("bar")
->>> z.cat("bar")
+Can ``close``
 
-Can ``save``
-
->>> z.zipit("test/foo.zip")
+>>> z.close()
 
 Can open existing ZIP files
 
->>> z2 = ZipWrap("test/foo.zip")
+>>> z2 = Zippier("test/foo.zip")
 >>> z2.cat("foo/bar/baz/junk")
-'stuff'
+b'stuff'
 
 >>> os.remove("test/foo.zip")
-
-Can open existing directories
-
->>> z3 = ZipWrap("test")
->>> z3.cat("/") # root dir
-['testzipwrap.py']
->>> z3.cat("/") # root dir
-
-Note that implementation actually uses a temp directory and puts
-everything there.  It's cleaned up upon garbage collection.
 
 """
 import zipfile
@@ -62,10 +43,63 @@ import tempfile
 import os
 import shutil
 
+try:
+    unicode
+except NameError:
+    # py 3
+    unicode = str
+
 __version__ = "0.1"
 __author__ = "matt harrison"
 __email__ = "matthewharrison@gmail.com"
 __license__ = "psf"
+
+def clean_path(path):
+    if path.startswith('/'):
+        path = path[1:]
+    return path
+
+
+class Zippier:
+    def __init__(self, name, mode='r'):
+        self.name = name
+        self.z = zipfile.ZipFile(self.name, mode=mode,
+                                 compression=zipfile.ZIP_DEFLATED)
+    def ls(self, location):
+        location = clean_path(location)
+        return [x for x in self.z.namelist() if x.startswith(location)]
+
+    def cat(self, location, binary=False):
+        location = clean_path(location)
+        return self.z.read(location)
+
+    def write(self, location, content=None, fin=None):
+        location = clean_path(location)
+        if content is not None:
+            self.z.writestr(location, content)
+        if fin:
+            self.z.writestr(location, fin.read())
+
+    def mkdir(self, location):
+        location = clean_path(location)
+        if not location.endswith('/'):
+            location = "{}/".format(location)
+        zinfo = zipfile.ZipInfo(location)
+        zinfo.external_attr = 16
+        self.z.writestr(zinfo, '')
+
+
+    def load_dir(self, directory):
+        for node, node_type in children(directory):
+            if node_type == 'FILE':
+                self.write(node,
+                           open(os.path.join(directory, node), 'r').read())
+
+    def close(self):
+        self.z.close()
+
+
+
 
 class ZipWrap(object):
     def __init__(self, path, force_exist=False):

@@ -88,6 +88,15 @@ Due to "feature" in ODT spec, it only works (by clicks) on a paragraph or outlin
   * bar
   * baz
 
+Hyperlinks
+----------
+
+
+External hyperlinks, like Python_.
+
+.. _Python: http://www.python.org/
+
+
 Text styling
 ------------
 

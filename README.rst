@@ -5,13 +5,14 @@ rst2odp: rst to LibreOffice impress
 This package contains a Python script (rst2odp) to convert `reStructuredText
 <http://docutils.sourceforge.net/rst.html>`_ to `LibreOffice
 <http://www.libreoffice.com>`_ Impress (rst2odp). It also includes a general
-python library (``odplib/preso.py``) for creating Impress files.
+python library (``odplib/preso.py``) for creating Impress files. Now with Python 3 support!
+
 
 Installation
 ============
 
 To build and install this Python package, you will first need to build/install
-docutils, pygments, and PIL. After you have done this, follow these steps:
+lxml, docutils, pygments, and PIL. After you have done this, follow these steps:
 
     $ python setup.py install
 
