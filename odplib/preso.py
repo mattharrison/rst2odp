@@ -1846,8 +1846,8 @@ class Template(object):
     def set_filepath(self, filepath):
         self.filepath = filepath
         self.zipfile = zipwrap.Zippier(filepath)
-        self.styles = et.fromstring(self.zipfile.cat('styles.xml').encode('utf-8'))
-        self.content = et.fromstring(self.zipfile.cat('content.xml').encode('utf-8'))
+        self.styles = et.fromstring(self.zipfile.cat('styles.xml')) 
+        self.content = et.fromstring(self.zipfile.cat('content.xml')) 
 
     def to_file(self, filename):
         self.zipfile.close(filename)
