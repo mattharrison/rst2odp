@@ -30,11 +30,55 @@ Image
 .. image:: img/test.png
 
 
+Adjusting Images
+----------------
+
+.. class:: crop
+
+  .. image:: img/test.png
+
+Using ``.. class:: crop`` fills the screen and crops off extra. Preserving ratios. Note that the title disappears as it is under (z layer) the image.
+
+Adjusting Images
+----------------
+
+.. class:: fill
+
+  .. image:: img/test.png
+
+Using ``.. class:: fill`` fills the screen but does not crop any. It might stretch the image
+
+Adjusting Images
+----------------
+
+.. class:: fit
+
+  .. image:: img/test.png
+
+Using ``.. class:: fit`` fills the screen but does not crop any.  Preserving ratios.
+
+
+Adjusting Images with Grids
+---------------------------
+
+Put image in a second cell of 3 columns and 1 row
+
+.. grid:: 2,3x1
+
+   .. class:: fit
+      
+     .. image:: img/test.png
+
+
+
+
 --------
 
 .. class:: center huge
 
 A slide with centered, huge text and no title
+
+
 
 Source code
 -----------
