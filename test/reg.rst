@@ -6,6 +6,32 @@ Title
 hello world
 
 
+Code
+------
+
+c-like
+
+.. code-block:: pycon
+
+  >>> "%s %s" %('hello', 'world')
+  'hello world'
+
+PEP 3101 adds ``.format`` method
+
+.. code-block:: pycon
+
+  >>> "{0} {1}".format('hello', 'world')
+  'hello world'
+
+
+Link Color
+----------
+
+.. urlcolor: #008777
+
+http://unicode.org has code charts that map letters to a Unicode *character code*. Currently mapping 110K
+
+
 Sub/super script
 -----------------
 

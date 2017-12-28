@@ -50,6 +50,8 @@ S5_SIZES = dict(
     tiny='18pt'
 )
 
+URLCOLOR = None # Libreoffice does auto blue '#0000ff'
+
 # to specify a font in rst use BOTH the .. font: comment and .. role::
 # .. font: alegreya|{"fo:font-family": "Alegreya"}
 # .. role:: alegreya
@@ -360,6 +362,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 preso_file, page_num = txt.split(' ')[-2:]
                 self.preso.import_slide(preso_file, int(page_num))
                 self.cur_slide = self.preso.slides[-1]
+            elif txt.startswith('urlcolor:'):
+                # urlcolor: #434343
+                global URLCOLOR
+                URLCOLOR = txt[len('urlcolor:'):].strip()
             elif txt.startswith('font:'):
                 # font name [| {json with TextStyle attributes}]
                 raw = txt[len('font:'):].strip()
@@ -389,7 +395,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 node = preso.TextFrameStyle(**mapping).style_node()
                 self.preso._auto_styles.append(node)
                 # get name from style
-                USER_DEFINED_TEXTFRAME_CLASSES[name.lower()] = node.attrib['style:name']
+                try:
+                    val = node.attrib['style:name']
+                except KeyError:
+                    val = node.attrib['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
+                USER_DEFINED_TEXTFRAME_CLASSES[name.lower()] = val
             elif txt.startswith('paragraph-properties:'):
                 # tweak margin of paragraph
                 # creates a class to use
@@ -441,9 +451,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('substitution_definition'):
             pass
         elif self.at('reference'):
-            # FirstClown - if we have link text, we need to make sure the text
-            # doesn't get any styles applied or it sometimes doesn't show.
-            self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+            self.cur_slide.write(node.astext())
         elif self.at('doctest_block'):
             pass
         elif self.at('field_name'):
@@ -509,7 +517,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.remove_block_quote(node)
             return # block quote adds paragraph style
         else:
-            print("POPPING OUT2")
             self.cur_slide.parent_of(ns('text', 'p'))
 
     visit_definition = visit_paragraph
@@ -730,9 +737,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 # P0 style. This was most apparent when a link was first word
                 # in a section after a title.
                 self.cur_slide.write("")
-            self.cur_slide.add_node('text:a', attrib={'xlink:href': '%s' % node['refuri'],
+            self.cur_node = self.cur_slide.cur_element.cur_node
+            if URLCOLOR:
+                style = preso.TextStyle(**{'fo:color': URLCOLOR})
+                self.cur_slide.push_style(style)
+                self.cur_slide.cur_element._add_styles()
+                self.cur_slide.pop_style()
+            self.cur_slide.add_node('text:a', attrib={'xlink:href': node['refuri'],
                                                       'xlink:type': 'simple'})
-
+            
     def depart_reference(self, node):
         if node.has_key('refid'):
             return
@@ -742,9 +755,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.depart_attribution(node)
             self.cur_slide.parent_of(ns('text', 'a'))
         else:
-            self.cur_slide.parent_of(ns('text', 'a'))
+            self.cur_slide.cur_element.cur_node = self.cur_node
 
-    def visit_target(self,node):
+    def visit_target(self, node):
         # Skip the target element since the <reference> of the target is
         # responsible for writing out the content
         pass
