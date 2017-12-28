@@ -289,6 +289,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def dispatch_visit(self, node):
         # Easier just to throw nodes I'm in in a dict, than keeping
         # state for each one
+
         count = self.in_node.setdefault(node.tagname, 0)
         self.in_node[node.tagname] += 1
         nodes.GenericNodeVisitor.dispatch_visit(self, node)
@@ -508,6 +509,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.remove_block_quote(node)
             return # block quote adds paragraph style
         else:
+            print("POPPING OUT2")
             self.cur_slide.parent_of(ns('text', 'p'))
 
     visit_definition = visit_paragraph

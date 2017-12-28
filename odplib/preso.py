@@ -381,6 +381,7 @@ class Preso(object):
         for picture_file in style.ls('Pictures'):
             zip_odp.write(picture_file, style.cat(picture_file, True))
         xml_data = style.cat('styles.xml', False)
+        #import pdb;pdb.set_trace()
         xml_data = self.override_styles(xml_data)
         zip_odp.write('styles.xml', xml_data)
 
@@ -1846,8 +1847,8 @@ class Template(object):
     def set_filepath(self, filepath):
         self.filepath = filepath
         self.zipfile = zipwrap.Zippier(filepath)
-        self.styles = et.fromstring(self.zipfile.cat('styles.xml')) 
-        self.content = et.fromstring(self.zipfile.cat('content.xml')) 
+        self.styles = et.fromstring(self.zipfile.cat('styles.xml').encode('utf-8')) 
+        self.content = et.fromstring(self.zipfile.cat('content.xml').encode('utf-8')) 
 
     def to_file(self, filename):
         self.zipfile.close(filename)

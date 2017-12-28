@@ -13,7 +13,10 @@ from docutils.core import Publisher, default_description, \
 from types import ModuleType
 #rst2odp = ModuleType('rst2odp')
 #exec open('../bin/rst2odp') in rst2odp.__dict__
-rst2odp = imp.load_source('rst2odp', '../bin/rst2odp')
+try:
+    rst2odp = imp.load_source('rst2odp', '../bin/rst2odp')
+except IOError:
+    rst2odp = imp.load_source('rst2odp', 'bin/rst2odp')
 
 from odplib import preso, zipwrap
 
@@ -133,6 +136,26 @@ Run with::
 """
         desired='bad'
         self.check_output(rst, desired, '/tmp/code.xml')
+
+    def test_from_script(self):
+        rst = """From script
+------------
+
+Make file ``hello.py`` with::
+
+
+  print("hello world")
+
+Run with:
+
+.. code-block:: console
+
+  $ python3 hello.py
+
+"""
+        desired = '''foo'''
+        self.check_output(rst, desired, '/tmp/code.xml')
+
 
     def test_normal_sized_styled_before_code(self):
         rst ="""

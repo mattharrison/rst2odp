@@ -69,9 +69,13 @@ class Zippier:
         location = clean_path(location)
         return [x for x in self.z.namelist() if x.startswith(location)]
 
-    def cat(self, location, binary=False):
+    def cat(self, location, binary=False, encoding='utf-8'):
         location = clean_path(location)
-        return self.z.read(location)
+        data = self.z.read(location)
+        if binary:
+            return data
+        else:
+            return data.decode(encoding)
 
     def write(self, location, content=None, fin=None):
         location = clean_path(location)
