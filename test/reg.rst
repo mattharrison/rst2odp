@@ -24,12 +24,26 @@ PEP 3101 adds ``.format`` method
   'hello world'
 
 
+
 Link Color
 ----------
 
 .. urlcolor: #008777
 
+.. class:: small
+
+  On https://github.com/mattharrison/pycon-beg-markov-2017/blob/master/markov.py
+
+
+Link Color 2
+------------
+
+.. urlcolor: #008777
+
 http://unicode.org has code charts that map letters to a Unicode *character code*. Currently mapping 110K
+
+
+
 
 
 Sub/super script
@@ -128,7 +142,7 @@ Columns
 
 ..  column: 4,2x3
 
-Column 2x3 pos 4
+2 columns wide, 3 rows  2x3 pos 4 (2nd row, 2nd col - across then down)
 
 ..  column: 1,2x3
 

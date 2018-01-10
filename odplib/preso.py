@@ -365,13 +365,15 @@ class Preso(object):
         return get_xpath(namespace, element)
 
     def set_template(self, template_file):
+        global SLIDE_WIDTH
+        global SLIDE_HEIGHT
         self.template_files.append(Template(template_file))
         if len(self.template_files) == 1:
             # going in order of precedence. Can load multiple templates, but first one is default
             master_pages = list(self.template_files[-1].get_master_page_names())
             self.master_page_name_cover = master_pages[0]
             self.master_page_name_normal = master_pages[-1]
-
+        SLIDE_WIDTH, SLIDE_HEIGHT = self.template_files[-1].get_size()
 
     def add_otp_style(self, zip_odp, style_file):
         """

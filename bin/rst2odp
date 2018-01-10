@@ -451,7 +451,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at('substitution_definition'):
             pass
         elif self.at('reference'):
-            self.cur_slide.write(node.astext())
+            # doesn't like formatting inside of text:a tag
+            # from (visit_reference)
+            self.cur_slide.write(node.astext(),
+                                 add_p_style=False,
+                                 add_t_style=False)
         elif self.at('doctest_block'):
             pass
         elif self.at('field_name'):
@@ -879,7 +883,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def add_block_quote(self, node):
         attribs = {'fo:text-align':'start',
                    'fo:margin-left':'1.2cm',
-                   'fo:margin-right':'-.9cm',
+                   'fo:margin-right':'.59cm',
+                   #'fo:margin-right':'-.9cm',
                    }
         style = preso.ParagraphStyle(**attribs)
         self.cur_slide.push_style(style)
