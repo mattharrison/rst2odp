@@ -205,8 +205,8 @@ def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
 
     w = '{}cm'.format(column_width)
     h = '{}cm'.format(column_height)
-    x = '{}cm'.format(left_margin + (col_pos*column_width + (col_pos -1)*padding))
-    y = '{}cm'.format(top_margin + (row_pos*column_height +(row_pos - 1)*padding))
+    x = '{}cm'.format(left_margin + (col_pos*column_width + (col_pos)*padding))
+    y = '{}cm'.format(top_margin + (row_pos*column_height +(row_pos)*padding))
     attr = {
         'presentation:class': 'outline',
         'presentation:style-name': 'Default-outline1',
