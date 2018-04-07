@@ -188,13 +188,12 @@ def pretty_xml(string_input, add_ns=False):
 def ns(namespace, element):
     return "{%s}%s" % (DOC_CONTENT_ATTRIB['xmlns:' + namespace], element)
 
-def add_cell(preso, pos, width, height, padding=1, top_margin=5, left_margin=2):
-    """ Add a text from to current slide """
+def add_cell(preso, pos, width, height, padding=1, top_margin=4, left_margin=2):
+    """ Add a text frame to current slide """
     available_width = SLIDE_WIDTH
     available_width -= left_margin * 2
     available_width -= padding * (width - 1)
     column_width = available_width / width
-
     avail_height = SLIDE_HEIGHT
     avail_height -= top_margin
     avail_height -= padding * (height - 1)
@@ -621,6 +620,13 @@ class Picture(object):
         classes = self.user_defined.get('classes', [])
         if 'crop' in classes:
             x,y,w,h = imagescale.adjust_crop(
+                frame_w*DPCM, frame_h*DPCM,
+                self.w, self.h)
+            
+        # if we are in a grid/column this aligns image in top
+        # left of area.
+        elif 'fit-top-left' in classes:
+            x,y,w,h = imagescale.adjust_fit(
                 frame_w*DPCM, frame_h*DPCM,
                 self.w, self.h)
         elif 'fit' in classes:
@@ -1363,8 +1369,8 @@ class TextFrame(MixedContent):
         attrib = attrib or {
             'presentation:style-name': style_name or props.get('style-name', 'Default-outline1'),
             'draw:layer':props.get('layer', 'layout'),
-            'svg:width': props['width'],
-            'svg:height': props['height'],
+            'svg:width': props.get('width', '10cm'),
+            'svg:height': props.get('height', '1cm'),
             'svg:x': props['x'],
             'svg:y': props['y'],
             'presentation:class':props.get('class', 'outline')
@@ -1508,6 +1514,7 @@ class TextStyle(object):
     STYLE_PROP = 'style:text-properties'
     PREFIX = 'T%d'
     ATTRIB2NAME = {}
+    PARENT_STYLE_DICT = {}
     TEXT_COUNT = 0
     def __init__(self, **kw):
         '''
@@ -1543,12 +1550,20 @@ class TextStyle(object):
                         'style:family':self.FAMILY}
         if additional_style_attrib:
             style_attrib.update(additional_style_attrib)
+        if self.PARENT_STYLE_DICT:
+            style_attrib.update(self.PARENT_STYLE_DICT)
+        
 
         node = el('style:style', attrib=style_attrib)
         props = sub_el(node, self.STYLE_PROP,
                             attrib=self.styles)
         return node
 
+
+class LineStyle(TextStyle):
+    FAMILY = 'graphic'
+    STYLE_PROP = 'style:graphic-properties'
+    PARENT_STYLE_DICT = {'style:parent-style-name': 'objectwithoutfill'}
 
 class ParagraphStyle(TextStyle):
     text_align = dict(
@@ -1927,6 +1942,75 @@ class Template(object):
         res = dict(node.items())
         return res
 
+
+def add_line(preso, x1, y1, x2, y2, width='3pt', color='red'):
+    """
+    Arrow pointing up to right:
+
+    context.xml:
+
+office:automatic-styles/
+    <style:style style:name="gr1" style:family="graphic" style:parent-style-name="objectwithoutfill">
+    <style:graphic-properties
+      draw:marker-end="Arrow"
+      draw:marker-end-width="0.3cm"
+      draw:fill="none"
+      draw:textarea-vertical-align="middle"/>
+    </style:style>
+
+    3pt width color red
+<style:style style:name="gr2" style:family="graphic" style:parent-style-name="objectwithoutfill">
+    <style:graphic-properties
+      svg:stroke-width="0.106cm"
+      svg:stroke-color="#ed1c24" 
+      draw:marker-start-width="0.359cm"
+      draw:marker-end="Arrow"
+      draw:marker-end-width="0.459cm"
+      draw:fill="none"
+      draw:textarea-vertical-align="middle"
+      fo:padding-top="0.178cm"
+      fo:padding-bottom="0.178cm"
+      fo:padding-left="0.303cm"
+      fo:padding-right="0.303cm"/>
+    </style:style>
+
+
+
+
+    ...
+
+office:presentation/draw:page
+
+    <draw:line draw:style-name="gr1" draw:text-style-name="P2" draw:layer="layout" svg:x1="6.35cm" svg:y1="10.16cm" svg:x2="10.668cm" svg:y2="5.842cm"><text:p/></draw:line>
+    """
+    marker_end_ratio = .459/3  # .459cm/3pt
+    marker_start_ratio = .359/3  # .359cm/3pt
+    stroke_ratio = .106/3  # .106cm/3pt
+    
+    w = float(width[0:width.index('pt')])
+    sw = w * stroke_ratio
+    mew = w * marker_end_ratio
+    msw = w * marker_start_ratio
+    attribs = {'svg:stroke-width':"{}cm".format(sw),
+                       'svg:stroke-color': color, #"#ed1c24",
+                       'draw:marker-start-width':"{}cm".format(msw),
+                       'draw:marker-end':"Arrow",
+                       'draw:marker-end-width':"{}cm".format(mew),
+                       'draw:fill':"none",
+                       'draw:textarea-vertical-align':"middle"}
+    style = LineStyle(**attribs)
+    #node = style.style_node()
+    preso.add_style(style)
+    line_attrib = {
+        'draw:style-name': style.name,
+        'draw:layer': 'layout',
+        'svg:x1': x1,
+        'svg:y1': y1,
+        'svg:x2': x2,
+        'svg:y2': y2,
+    }
+    line_node = el('draw:line', attrib=line_attrib)
+    preso.slides[-1]._page.append(line_node)
 
 def _test():
     import doctest

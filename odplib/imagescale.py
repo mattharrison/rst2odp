@@ -64,6 +64,8 @@ def adjust_pad(dst_w, dst_h, img_w, img_h, amount=.1):
     y = y + dst_h * amount
     return x,y,w,h
 
+
+
 def adjust_fit(dst_w, dst_h, img_w, img_h):
     """
     given a x and y of dest, determine the ratio and return

@@ -154,6 +154,38 @@ class SetGrid(rst.Directive):
 rst.directives.register_directive('grid', SetGrid)
 
 
+class textbox(nodes.General, nodes.Inline, nodes.Element):
+    pass
+
+
+class SetTextBox(rst.Directive):
+    """
+    allow
+
+    .. textbox:: {"x": "2cm", "y": "4cm"}
+      Hello World
+
+
+    Specify font with
+
+    .. font: 
+    """
+    required_arguments = 1
+    optional_arguments = 0
+    final_argument_whitespace = 1
+    has_content = True
+
+    def run(self):
+        textbox_args = self.arguments[0]
+        textbox_block = textbox(value=textbox_args)
+        self.state.nested_parse(self.content, self.content_offset, textbox_block)
+        return [textbox_block]
+
+rst.directives.register_directive('textbox', SetTextBox)
+
+
+
+
 class ImportNode(nodes.General, nodes.Inline, nodes.Element): pass
 
 
@@ -222,12 +254,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         nodes.GenericNodeVisitor.__init__(self, document)
         self.settings = document.settings
         self.preso = preso.Preso()
-
         if self.settings.template_file:
             self.preso.set_template(self.settings.template_file)
             template = preso.Template(self.settings.template_file)
             preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x.split('cm')[0]) for x in template.get_size()]
-
         if self.settings.page_size:
             preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x) for x in self.settings.page_size.split('x')]
 
@@ -377,6 +407,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                     mapping = {}
                     mapping['fo:font-family'] = name
                 USER_DEFINED_FONTS[name] = mapping
+            elif txt.startswith('arrow:'):
+                # arrow: {"x1":"2cm", y1, x2, y2}
+                
+                raw = txt[len('arrow:'):].strip()
+                preso.add_line(self.preso, **json.loads(raw))
             elif txt.startswith('drawing-page-properties:'):
                 # tweak background color ie:
                 # .. drawing-page-properties: {draw:fill-color="#772953"}
@@ -1199,6 +1234,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def depart_grid(self, node):
         self.cur_slide.grid_w_h_x_y = None
+
+    def visit_textbox(self, node):
+        raw = node.attributes.get('value')
+        props = json.loads(raw)
+        self.cur_slide.push_element()
+        self.cur_slide.add_text_frame(props=props)
+
+    def depart_textbox(self, node):
+        self.cur_slide.pop_element()
 
     def _get_para_attribs(self, node):
         classes = node.attributes.get('classes', [])

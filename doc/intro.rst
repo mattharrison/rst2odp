@@ -167,6 +167,27 @@ This text goes in the third column.
 
 .. slide-layout:: 1column
 
+Font
+----
+
+.. role:: Helvetica
+
+.. font: helvetica|{"fo:font-family": "Helvetica"}
+
+.. role:: helvetica
+
+This :Helvetica:`should be in helvetica font!`
+
+Arrow & Textbox
+---------------
+
+.. arrow: {"x1":"1cm","y1":"2cm","x2":"10cm","y2":"12cm", "color":"#00ffff", "width":"5pt"}
+
+.. textbox:: {"x": "10cm", "y": "12.2cm"}
+
+  Text starting at position 10, 12.2
+
+
 Master Pages
 -------------
 
