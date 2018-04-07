@@ -636,8 +636,13 @@ class Picture(object):
                 self.w, self.h)
         else:
             x,y,w,h = 1.4, 4.6, self.get_width(), self.get_height()
-        x += frame_x
-        y += frame_y
+        if 'fit-top-left' in classes:
+            x = frame_x
+            y = frame_y
+        else:
+            x += frame_x
+            y += frame_y
+
         res =  [str(foo)+measurement for foo in [x,y,w,h]]
         return [str(foo)+measurement for foo in [x,y,w,h]]
 
