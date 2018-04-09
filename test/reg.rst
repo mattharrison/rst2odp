@@ -202,13 +202,13 @@ Fill Image on slide
 Font
 ----
 
-.. role:: Alegreya
+.. role:: Helvetica
 
-.. font: alegreya|{"fo:font-family": "Alegreya"}
+.. font: helvetica|{"fo:font-family": "Helvetica"}
 
-.. role:: alegreya
+.. role:: helvetica
 
-This :Alegreya:`should be in alegreya font!`
+This :Helvetica:`should be in helvetica font!`
 
 :orange:`text`
 
