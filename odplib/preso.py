@@ -535,6 +535,8 @@ class Preso(object):
             self._auto_styles.append(node)
 
     def add_slide(self, master_page_name=None, layout=None):
+        if self.slides:
+            self.slides[-1].finish_slide()
         pnum = len(self.slides) + 1
         s = Slide(self, page_number=pnum, master_page_name=master_page_name)
         if layout is not None:
@@ -556,8 +558,9 @@ class Preso(object):
 class Animation(object):
     ANIM_COUNT = 1
 
-    def __init__(self):
+    def __init__(self, ids=None):
         self.id = self._get_id()
+        self.ids = ids
 
     def _get_id(self):
         my_id = "id%d" % self.__class__.ANIM_COUNT
@@ -587,19 +590,38 @@ class Animation(object):
                 "presentation:preset-id": "ooo-entrance-appear",
             },
         )
-        anim_set = sub_el(
-            par3,
-            "anim:set",
-            attrib={
-                "smil:begin": "0s",
-                "smil:dur": "0.001s",
-                "smil:fill": "hold",
-                "smil:targetElement": self.id,
-                "anim:sub-item": "text",
-                "smil:attributeName": "visibility",
-                "smil:to": "visible",
-            },
-        )
+        if self.ids:
+            for id in self.ids:
+                anim_set = sub_el(
+                    par3,
+                    "anim:set",
+                    attrib={
+                        "smil:begin": "0s",
+                        "smil:dur": "0.001s",
+                        "smil:fill": "hold",
+                        "smil:targetElement": id,
+                        "anim:sub-item": "text",
+                        "smil:attributeName": "visibility",
+                        "smil:to": "visible",
+                    },
+                )
+
+        else:
+
+            anim_set = sub_el(
+                par3,
+                "anim:set",
+                attrib={
+                    "smil:begin": "0s",
+                    "smil:dur": "0.001s",
+                    "smil:fill": "hold",
+                    "smil:targetElement": self.id,
+                    "anim:sub-item": "text",
+                    "smil:attributeName": "visibility",
+                    "smil:to": "visible",
+                },
+            )
+
         return par
 
 
@@ -769,6 +791,9 @@ class Slide(object):
         self.cur_element = None  # if we write it could be to title,
         # text or notes (Subclass of
         # MixedContent)
+        self.anim_ids = []  # list of tuples of (id1, id2) for
+                           # animating (ie id1 and id2 should appear
+                           # together)
 
         self.insert_line_break = 0
         self.grid_w_h_x_y = None
@@ -1092,6 +1117,18 @@ class Slide(object):
         if self.cur_element:
             self.cur_element.parent_of(name)
 
+    def finish_slide(self):
+        # sometimes we need to tack on data after writing
+        # (like animations)
+        if self.anim_ids:
+            a_node = el('anim:par', {"presentation:node-type": "timing-root"})
+            self._page.append(a_node)
+            seq_node = sub_el(a_node, 'anim:seq', {"presentation:node-type": "main-sequence"})
+            for ids in self.anim_ids:
+                an = Animation(ids=ids)
+                node = an.get_node()
+                seq_node.append(node)
+
 
 class XMLSlide(Slide):
     PREFIX = "IMPORT%d-%s"
@@ -1215,12 +1252,14 @@ class MixedContent(object):
     """
     An area that supports writing to
     """
-
+    draw_id = 0
     def __init__(self, slide, name, attrib=None):
         self._default_align = "start"
         self.slide = slide
         if attrib is None:
             attrib = {}
+        attrib['draw:id'] = 'mc-{}'.format(MixedContent.draw_id)
+        MixedContent.draw_id = MixedContent.draw_id + 1
         self.node = el(name, attrib)
         self.cur_node = self.node
         # store nodes that affect output (such as text:a)

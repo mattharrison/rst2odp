@@ -208,6 +208,23 @@ class ImportSlideBlock(rst.Directive):
 
 rst.directives.register_directive("importslide", ImportSlideBlock)
 
+class animation(nodes.General, nodes.Inline, nodes.Element):
+    pass
+
+
+class SetAnimationBlock(rst.Directive):
+    required_arguments = 0
+    optional_arguments = 0
+    has_content = True
+
+    def run(self):
+        node = animation()#odp_path=odp_path, page_num=page_num)
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
+
+
+rst.directives.register_directive("animation", SetAnimationBlock)
+
 
 class Writer(writers.Writer):
     settings_spec = (
@@ -301,6 +318,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.bullet_depth = 0
         self.footer = None
         self.table_title = None
+        self.anim_ignore = set()
 
     def _init_slide(self, force=False, master_page_name=None):
         if force or self.cur_slide is None:
@@ -1287,6 +1305,38 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def depart_grid(self, node):
         self.cur_slide.grid_w_h_x_y = None
+
+    def visit_animation(self, node):
+        self.anim_parent =  self.cur_slide._page
+        self.anim_ignore = set()
+        # If we have content before any animation make
+        # sure we ignore that
+        for node in self.anim_parent.getchildren():
+            try:
+                n_id = node.attrib['{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}id']
+                self.anim_ignore.add(n_id)
+            except KeyError:
+                continue
+        # Each animation element should be in it's own frame
+        self.cur_slide.push_element()
+
+    def depart_animation(self, node):
+        seen = set()
+        for groups in self.cur_slide.anim_ids:
+            seen.update(groups)
+        # go through each child of anim_parent
+        new_ids = []
+        for node in self.anim_parent.getchildren():
+            try:
+                n_id = node.attrib['{urn:oasis:names:tc:opendocument:xmlns:drawing:1.0}id']
+            except KeyError:
+                continue
+            if n_id not in self.anim_ignore:
+                new_ids.append(n_id)
+        if new_ids:
+            self.cur_slide.anim_ids.append(new_ids)
+        self.anim_parent = None
+        self.cur_slide.pop_element()
 
     def visit_textbox(self, node):
         raw = node.attributes.get("value")

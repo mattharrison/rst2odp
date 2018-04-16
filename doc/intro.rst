@@ -14,6 +14,39 @@ Intro to rst and the odp converter
   Everything that is in this block will only be in the notes.
   You can put these on each slide.
 
+
+Animated Frames
+-----------------
+
+Everything in the animation should appear together on click
+
+.. animation::
+
+  .. grid:: 1,2x1
+
+     .. class:: fit_top_left
+
+        .. image:: img/test.png
+
+
+  .. textbox:: {"x": "10cm", "y": "12.2cm"}
+
+    Anim Text starting at position 10, 12.2
+
+.. animation::
+
+  .. grid:: 2,2x1
+
+     .. class:: fit_top_left
+
+        .. image:: img/test.png
+
+
+  .. textbox:: {"x": "20cm", "y": "12.2cm"}
+
+    Anim Text 2 starting at position 10, 12.2
+
+
 Simple Slides
 -------------
 
@@ -28,6 +61,8 @@ Image
 -----
 
 .. image:: img/test.png
+
+
 
 
 Adjusting Images
