@@ -8,11 +8,10 @@ import sys
 
 
 import docutils
-import docutils.utils #hack around circ. dep in io (docutils.10)
+import docutils.utils  # hack around circ. dep in io (docutils.10)
 from docutils import io, writers, nodes
 from docutils.readers import standalone
-from docutils.core import Publisher, default_description, \
-    default_usage
+from docutils.core import Publisher, default_description, default_usage
 from docutils.parsers import rst
 
 import odplib.preso as preso
@@ -20,37 +19,31 @@ from odplib.preso import ns
 
 
 S5_COLORS = dict(
-    black='#000000',
-    gray='#545454',
-    silver='#c0c0c0',
-    white='#ffffff',
-    maroon='#b03060',
-    red='#ff0000',
-    magenta='#ff00ff',
-    fuchsia='#ff00ff', # FIX
-    pink='#ff1493',
-    orange='#ffa500',
-    yellow='#ffff00',
-    lime='#32cd32',
-    green='#00ff00',
-    olive='#6b8e23',
-    teal='#008080',
-    cyan='#00ffff',
-    aqua='#00ffff', # FIX
-    blue='#0000ff',
-    navy='#000080',
-    purple='#a020f0'
+    black="#000000",
+    gray="#545454",
+    silver="#c0c0c0",
+    white="#ffffff",
+    maroon="#b03060",
+    red="#ff0000",
+    magenta="#ff00ff",
+    fuchsia="#ff00ff",  # FIX
+    pink="#ff1493",
+    orange="#ffa500",
+    yellow="#ffff00",
+    lime="#32cd32",
+    green="#00ff00",
+    olive="#6b8e23",
+    teal="#008080",
+    cyan="#00ffff",
+    aqua="#00ffff",  # FIX
+    blue="#0000ff",
+    navy="#000080",
+    purple="#a020f0",
 )
 
-S5_SIZES = dict(
-    huge='66pt',
-    big='44pt',
-    normal='28pt',
-    small='22pt',
-    tiny='18pt'
-)
+S5_SIZES = dict(huge="66pt", big="44pt", normal="28pt", small="22pt", tiny="18pt")
 
-URLCOLOR = None # Libreoffice does auto blue '#0000ff'
+URLCOLOR = None  # Libreoffice does auto blue '#0000ff'
 
 # to specify a font in rst use BOTH the .. font: comment and .. role::
 # .. font: alegreya|{"fo:font-family": "Alegreya"}
@@ -60,8 +53,9 @@ URLCOLOR = None # Libreoffice does auto blue '#0000ff'
 
 USER_DEFINED_FONTS = {}
 
-USER_DEFINED_TEXTFRAME_CLASSES = {} # map of classname to xml name
-USER_DEFINED_PARAGRAPH_CLASSES = {} # map of classname to mapping
+USER_DEFINED_TEXTFRAME_CLASSES = {}  # map of classname to xml name
+USER_DEFINED_PARAGRAPH_CLASSES = {}  # map of classname to mapping
+
 
 class SyntaxHighlightCodeBlock(rst.Directive):
     required_arguments = 1
@@ -70,21 +64,25 @@ class SyntaxHighlightCodeBlock(rst.Directive):
     #
     # See visit_literal_block for code that processes the node
     #   created here.
+
     def run(self):
         language = self.arguments[0]
-        code_block = nodes.literal_block(classes=["code-block", language],
-            language=language)
+        code_block = nodes.literal_block(
+            classes=["code-block", language], language=language
+        )
         lines = self.content
-        content = '\n'.join(lines)
+        content = "\n".join(lines)
         text_node = nodes.Text(content)
         code_block.append(text_node)
         # Mark this node for high-lighting so that visit_literal_block
         #   will be able to hight-light those produced here and
         #   *not* high-light regular literal blocks (:: in reST).
-        code_block['hilight'] = True
+        code_block["hilight"] = True
         return [code_block]
 
-rst.directives.register_directive('code-block', SyntaxHighlightCodeBlock)
+
+rst.directives.register_directive("code-block", SyntaxHighlightCodeBlock)
+
 
 class SetSlideDesign(rst.Directive):
     required_arguments = 1
@@ -97,7 +95,9 @@ class SetSlideDesign(rst.Directive):
         design_block = nodes.docinfo(name="slide-design", value=design)
         return [design_block]
 
-rst.directives.register_directive('slide-design', SetSlideDesign)
+
+rst.directives.register_directive("slide-design", SetSlideDesign)
+
 
 class SetSlideLayout(rst.Directive):
     required_arguments = 1
@@ -110,7 +110,9 @@ class SetSlideLayout(rst.Directive):
         layout_block = nodes.docinfo(name="slide-layout", value=layout)
         return [layout_block]
 
-rst.directives.register_directive('slide-layout', SetSlideLayout)
+
+rst.directives.register_directive("slide-layout", SetSlideLayout)
+
 
 class SetColumn(rst.Directive):
     required_arguments = 1
@@ -123,7 +125,8 @@ class SetColumn(rst.Directive):
         column_block = nodes.docinfo(name="column", value=column)
         return [column_block]
 
-rst.directives.register_directive('column', SetColumn)
+
+rst.directives.register_directive("column", SetColumn)
 
 
 class grid(nodes.General, nodes.Inline, nodes.Element):
@@ -151,7 +154,8 @@ class SetGrid(rst.Directive):
         self.state.nested_parse(self.content, self.content_offset, grid_block)
         return [grid_block]
 
-rst.directives.register_directive('grid', SetGrid)
+
+rst.directives.register_directive("grid", SetGrid)
 
 
 class textbox(nodes.General, nodes.Inline, nodes.Element):
@@ -181,12 +185,12 @@ class SetTextBox(rst.Directive):
         self.state.nested_parse(self.content, self.content_offset, textbox_block)
         return [textbox_block]
 
-rst.directives.register_directive('textbox', SetTextBox)
+
+rst.directives.register_directive("textbox", SetTextBox)
 
 
-
-
-class ImportNode(nodes.General, nodes.Inline, nodes.Element): pass
+class ImportNode(nodes.General, nodes.Inline, nodes.Element):
+    pass
 
 
 class ImportSlideBlock(rst.Directive):
@@ -201,41 +205,49 @@ class ImportSlideBlock(rst.Directive):
         node = ImportNode(odp_path=odp_path, page_num=page_num)
         return [node]
 
-rst.directives.register_directive('importslide', ImportSlideBlock)
+
+rst.directives.register_directive("importslide", ImportSlideBlock)
 
 
 class Writer(writers.Writer):
     settings_spec = (
-        'ODP Specific Options', # option group title
-        None, # Description
-        ( # options (help string, list of options, dictions of OptionParser.add_option dicts)
-            ('Specify a template (.otp) to use for styling',
-             ['--template-file'],
-             {'action': 'store',
-              'dest': 'template_file'}),
-            ('Specify a monospace font to use ("Courier New" default)',
-             ['--mono-font'],
-             {'action': 'store',
-              'dest': 'mono_font'}),
-            ('Specify a normal font to use ("Arial" default)',
-             ['--font'],
-             {'action': 'store',
-              'dest': 'font'}),
-            ('Specify pages to export (2,3,9-10)',
-             ['--pages-to-output'],
-             {'action': 'store',
-              'dest': 'pages_to_output'}),
-            ('Specify a Pygments style (see pygmentize -L styles)',
-             ['--pygments-style'],
-             {'action': 'store',
-              'dest': 'pygments_style'}),
-            ('Specify WxH (cm) default(%sx%s)' % (preso.SLIDE_WIDTH,
-                                                  preso.SLIDE_HEIGHT),
-             ['--page-size'],
-             {'action': 'store',
-              'dest': 'page_size'})
-            )
-        )
+        "ODP Specific Options",  # option group title
+        None,  # Description
+        (  # options (help string, list of options, dictions of OptionParser.add_option dicts)
+            (
+                "Specify a template (.otp) to use for styling",
+                ["--template-file"],
+                {"action": "store", "dest": "template_file"},
+            ),
+            (
+                'Specify a monospace font to use ("Courier New" default)',
+                ["--mono-font"],
+                {"action": "store", "dest": "mono_font"},
+            ),
+            (
+                'Specify a normal font to use ("Arial" default)',
+                ["--font"],
+                {"action": "store", "dest": "font"},
+            ),
+            (
+                "Specify pages to export (2,3,9-10)",
+                ["--pages-to-output"],
+                {"action": "store", "dest": "pages_to_output"},
+            ),
+            (
+                "Specify a Pygments style (see pygmentize -L styles)",
+                ["--pygments-style"],
+                {"action": "store", "dest": "pygments_style"},
+            ),
+            (
+                "Specify WxH (cm) default(%sx%s)"
+                % (preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT),
+                ["--page-size"],
+                {"action": "store", "dest": "page_size"},
+            ),
+        ),
+    )
+
     def __init__(self):
         writers.Writer.__init__(self)
         self.translator_class = ODPTranslator
@@ -243,13 +255,14 @@ class Writer(writers.Writer):
     def translate(self):
         self.visitor = self.translator_class(self.document)
         self.document.walkabout(self.visitor)
-        self.parts['whole'] = self.visitor.get_whole()
-        self.output = self.parts['whole']
-        self.parts['encoding'] = self.document.settings.output_encoding
-        self.parts['version'] = docutils.__version__
+        self.parts["whole"] = self.visitor.get_whole()
+        self.output = self.parts["whole"]
+        self.parts["encoding"] = self.document.settings.output_encoding
+        self.parts["version"] = docutils.__version__
 
 
 class ODPTranslator(nodes.GenericNodeVisitor):
+
     def __init__(self, document):
         nodes.GenericNodeVisitor.__init__(self, document)
         self.settings = document.settings
@@ -257,9 +270,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         if self.settings.template_file:
             self.preso.set_template(self.settings.template_file)
             template = preso.Template(self.settings.template_file)
-            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x.split('cm')[0]) for x in template.get_size()]
+            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [
+                float(x.split("cm")[0]) for x in template.get_size()
+            ]
         if self.settings.page_size:
-            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [float(x) for x in self.settings.page_size.split('x')]
+            preso.SLIDE_WIDTH, preso.SLIDE_HEIGHT = [
+                float(x) for x in self.settings.page_size.split("x")
+            ]
 
         if self.settings.pages_to_output:
             self.preso.limit_pages = num_string_to_list(self.settings.pages_to_output)
@@ -273,7 +290,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         if self.settings.pygments_style:
             preso.PYGMENTS_STYLE = self.settings.pygments_style
 
-        self.in_node = {} # map of tagname to True if we are in/under this
+        self.in_node = {}  # map of tagname to True if we are in/under this
         self.current_docinfo_states = {}
         self._reset()
 
@@ -287,20 +304,22 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def _init_slide(self, force=False, master_page_name=None):
         if force or self.cur_slide is None:
-            master_page_name = master_page_name or self.get_most_recent_docinfo('slide-design')
+            master_page_name = master_page_name or self.get_most_recent_docinfo(
+                "slide-design"
+            )
 
-            layout = self.get_most_recent_docinfo('slide-layout')
-            if layout == '1column':
-                layout = 'AL1T0'
-            elif layout == '2column':
-                layout = 'AL2T3'
+            layout = self.get_most_recent_docinfo("slide-layout")
+            if layout == "1column":
+                layout = "AL1T0"
+            elif layout == "2column":
+                layout = "AL2T3"
 
             self._reset()
-            self.cur_slide = self.preso.add_slide(master_page_name=master_page_name,
-                layout=layout)
+            self.cur_slide = self.preso.add_slide(
+                master_page_name=master_page_name, layout=layout
+            )
         # reset slide-design
-        self.current_docinfo_states['slide-design'] = None
-
+        self.current_docinfo_states["slide-design"] = None
 
     def at(self, nodename):
         """
@@ -314,7 +333,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def get_most_recent_docinfo(self, name):
         docinfo = self.current_docinfo_states.get(name, None)
         if docinfo:
-            return docinfo.attributes['value']
+            return docinfo.attributes["value"]
+
         else:
             return None
 
@@ -333,7 +353,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def default_visit(self, node):
         if self.settings.report_level >= 3:
             sys.stderr.write("ERR! NODE: {} {}".format(node, node.tagname))
-        raise NotImplementedError('node is %r, tag is %s, text: %s' % (node, node.tagname, node.parent.astext()))
+        raise NotImplementedError(
+            "node is %r, tag is %s, text: %s"
+            % (node, node.tagname, node.parent.astext())
+        )
 
     def default_departure(self, node):
         if self.settings.report_level >= 3:
@@ -342,6 +365,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def _dumb_visit(self, node):
         pass
+
     _dumb_depart = _dumb_visit
 
     def visit_document(self, node):
@@ -351,113 +375,123 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_document = _dumb_depart
 
     def visit_title(self, node):
-        if self.at('table'):
+        if self.at("table"):
             return
-        if self.at('section') < 2:
+
+        if self.at("section") < 2:
             self._init_slide()
-        if self.at('topic'):
+        if self.at("topic"):
             return
-        elif self.at('sidebar'):
+
+        elif self.at("sidebar"):
             return
-        elif self.at('section') < 2:
+
+        elif self.at("section") < 2:
             self.cur_slide.add_title_frame()
 
     def depart_title(self, node):
-        if self.at('table'):
+        if self.at("table"):
             return
-        if self.at('topic'):
+
+        if self.at("topic"):
             return
-        elif self.at('sidebar'):
+
+        elif self.at("sidebar"):
             return
-        elif self.at('section') < 2:
+
+        elif self.at("section") < 2:
             # not in a title element anymore
             self.cur_slide.cur_element = None
         else:
             pass
 
     def visit_Text(self, node):
-        if self.at('literal_block'):
+        if self.at("literal_block"):
             pass
-        elif self.bullet_list and not self.at('handout'): # !!!need to deal w/ bullets in handout
+        elif self.bullet_list and not self.at(
+            "handout"
+        ):  # !!!need to deal w/ bullets in handout
             self.bullet_list.write(node.astext())
-        elif self.at('table') and self.at('title'):
+        elif self.at("table") and self.at("title"):
             self.table_title = node.astext()
-        elif self.at('footer'):
+        elif self.at("footer"):
             self.footer.write(node.astext())
-        elif self.at('comment'):
+        elif self.at("comment"):
             txt = node.astext()
-            if txt.startswith('import:'):
+            if txt.startswith("import:"):
                 # example
                 # .. import: path/to/slide.odp 2
-                preso_file, page_num = txt.split(' ')[-2:]
+                preso_file, page_num = txt.split(" ")[-2:]
                 self.preso.import_slide(preso_file, int(page_num))
                 self.cur_slide = self.preso.slides[-1]
-            elif txt.startswith('urlcolor:'):
+            elif txt.startswith("urlcolor:"):
                 # urlcolor: #434343
                 global URLCOLOR
-                URLCOLOR = txt[len('urlcolor:'):].strip()
-            elif txt.startswith('font:'):
+                URLCOLOR = txt[len("urlcolor:"):].strip()
+            elif txt.startswith("font:"):
                 # font name [| {json with TextStyle attributes}]
-                raw = txt[len('font:'):].strip()
-                if '|' in raw:
-                    name, mapping = raw.split('|')
+                raw = txt[len("font:"):].strip()
+                if "|" in raw:
+                    name, mapping = raw.split("|")
                     mapping = json.loads(mapping)
                 else:
                     name = raw
                     mapping = {}
-                    mapping['fo:font-family'] = name
+                    mapping["fo:font-family"] = name
                 USER_DEFINED_FONTS[name] = mapping
-            elif txt.startswith('arrow:'):
+            elif txt.startswith("arrow:"):
                 # arrow: {"x1":"2cm", y1, x2, y2}
-                
-                raw = txt[len('arrow:'):].strip()
+
+                raw = txt[len("arrow:"):].strip()
                 preso.add_line(self.preso, **json.loads(raw))
-            elif txt.startswith('drawing-page-properties:'):
+            elif txt.startswith("drawing-page-properties:"):
                 # tweak background color ie:
                 # .. drawing-page-properties: {draw:fill-color="#772953"}
-                raw = txt[len('drawing-page-properties:'):].strip()
+                raw = txt[len("drawing-page-properties:"):].strip()
                 mapping = json.loads(raw)
                 self.preso.slides[-1].update_style(mapping)
-            elif txt.startswith('graphic-properties:'):
+            elif txt.startswith("graphic-properties:"):
                 # tweak color of text frame
                 # creates a class to use
                 # .. graphic-properties: CLASSNAME {"draw:fill-color":"#772953", "draw:opacity":"50%"}
                 #
                 # .. class:: CLASSNAME
-                raw = txt[len('graphic-properties:'):].strip()
-                name, mapping = raw.split(' ', 1)
+                raw = txt[len("graphic-properties:"):].strip()
+                name, mapping = raw.split(" ", 1)
                 mapping = json.loads(mapping)
                 node = preso.TextFrameStyle(**mapping).style_node()
                 self.preso._auto_styles.append(node)
                 # get name from style
                 try:
-                    val = node.attrib['style:name']
+                    val = node.attrib["style:name"]
                 except KeyError:
-                    val = node.attrib['{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name']
+                    val = node.attrib[
+                        "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name"
+                    ]
                 USER_DEFINED_TEXTFRAME_CLASSES[name.lower()] = val
-            elif txt.startswith('paragraph-properties:'):
+            elif txt.startswith("paragraph-properties:"):
                 # tweak margin of paragraph
                 # creates a class to use
                 # .. paragraph-properties: CLASSNAME {"fo:margin-left":"0.18cm"}
                 #
                 # .. class:: CLASSNAME
-                raw = txt[len('paragraph-properties:'):].strip()
-                name, mapping = raw.split(' ', 1)
+                raw = txt[len("paragraph-properties:"):].strip()
+                name, mapping = raw.split(" ", 1)
                 mapping = json.loads(mapping)
                 # get name from style
                 USER_DEFINED_PARAGRAPH_CLASSES[name.lower()] = mapping
-            elif txt.startswith('replace:'):
+            elif txt.startswith("replace:"):
                 # example (needs to be proper json (ie double quotes)
                 # .. replace: {"<Author Twitter>":"@__mharrison"}
-                raw = txt[len('replace:'):].strip()
-                mapping = json.loads(txt[len('replace:'):].strip())
+                raw = txt[len("replace:"):].strip()
+                mapping = json.loads(txt[len("replace:"):].strip())
                 self.preso.slides[-1].update_text(mapping)
-            elif txt.startswith('replace-image:'):
+            elif txt.startswith("replace-image:"):
                 # .. replace-image: Pictures/10000201000000590000004769CC08A3.png img/matt.png
-                old, new = txt.split(' ')[1:]
-                mapping = {old:new}
+                old, new = txt.split(" ")[1:]
+                mapping = {old: new}
                 self.preso.slides[-1].update_image(mapping)
-            elif txt.startswith('column:'):
+            elif txt.startswith("column:"):
                 # .. column: 4,2x3
                 # given a matrix of 2 width and 3 tall fill in cell 4
                 #
@@ -469,39 +503,38 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 # | 5  |  6 |
                 # +----+----+
 
-                raw = txt[len('column:'):].strip()
-                pos, mat = raw.split(',')
-                w,h = mat.split('x')
+                raw = txt[len("column:"):].strip()
+                pos, mat = raw.split(",")
+                w, h = mat.split("x")
                 preso.add_cell(self.preso, *map(int, [pos, w, h]))
-            elif txt.startswith('master-page:'):
+            elif txt.startswith("master-page:"):
                 # use master-page from template
-                page_name = txt[len('master-page:'):].strip()
+                page_name = txt[len("master-page:"):].strip()
                 self._init_slide(force=True, master_page_name=page_name)
-            elif txt.startswith('frame:'):
+            elif txt.startswith("frame:"):
                 # we are writing to a frame is a specific master-page
-                frame = txt[len('frame:'):].strip()
+                frame = txt[len("frame:"):].strip()
                 self.preso.jump_to_frame(frame)
-        elif self.at('topic'):
+        elif self.at("topic"):
             pass
-        elif self.at('substitution_definition'):
+        elif self.at("substitution_definition"):
             pass
-        elif self.at('reference'):
+        elif self.at("reference"):
             # doesn't like formatting inside of text:a tag
             # from (visit_reference)
-            self.cur_slide.write(node.astext(),
-                                 add_p_style=False,
-                                 add_t_style=False)
-        elif self.at('doctest_block'):
+            self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+        elif self.at("doctest_block"):
             pass
-        elif self.at('field_name'):
+        elif self.at("field_name"):
             pass
         else:
             self.cur_slide.write(node.astext())
+
     depart_Text = _dumb_depart
 
     def _push_handout(self, classes):
-        if 'handout' in classes:
-            self.in_node['handout'] = True
+        if "handout" in classes:
+            self.in_node["handout"] = True
 
             if not self.cur_slide.notes_frame:
                 self.cur_slide.add_notes_frame()
@@ -517,7 +550,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 self.cur_slide.add_text_frame(style_name=style_name)
 
     def visit_paragraph(self, node):
-        classes =  node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
         self.handle_self_defined_classes(classes)
         self._push_handout(classes)
         p_attribs = self._get_para_attribs(node)
@@ -531,39 +564,44 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         if self.bullet_list:
             pass
-        elif self.at('topic'):
+        elif self.at("topic"):
             return
-        elif self.at('block_quote'):
+
+        elif self.at("block_quote"):
             self.add_block_quote(node)
-            return # block quote adds paragraph style
-        elif self.at('doctest_block'):
+            return  # block quote adds paragraph style
+
+        elif self.at("doctest_block"):
             pass
 
     def depart_paragraph(self, node):
-        classes = node.attributes.get('classes', [])
-        if 'center' in classes or 'right' in classes:
+        classes = node.attributes.get("classes", [])
+        if "center" in classes or "right" in classes:
             self.cur_slide.pop_node()
-        if 'handout' in classes:
-            self.in_node['handout'] = False
+        if "handout" in classes:
+            self.in_node["handout"] = False
             self.cur_slide.pop_element()
 
         if self._get_text_attribs(node):
             self.cur_slide.pop_style()
-            self.cur_slide.parent_of(ns('text', 'p'))
-        elif self.at('topic'):
+            self.cur_slide.parent_of(ns("text", "p"))
+        elif self.at("topic"):
             return
-        elif self.at('block_quote'):
+
+        elif self.at("block_quote"):
             self.remove_block_quote(node)
-            return # block quote adds paragraph style
+            return  # block quote adds paragraph style
+
         else:
-            self.cur_slide.parent_of(ns('text', 'p'))
+            self.cur_slide.parent_of(ns("text", "p"))
 
     visit_definition = visit_paragraph
     depart_definition = depart_paragraph
 
     def visit_bullet_list(self, node):
-        if self.at('topic'):
+        if self.at("topic"):
             return
+
         p_attribs = self._get_para_attribs(node)
         if p_attribs:
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
@@ -572,8 +610,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             style = preso.TextStyle(**attribs)
             self.cur_slide.push_style(style)
 
-        classes =  node.attributes.get('classes', [])
-        if 'handout' in classes:
+        classes = node.attributes.get("classes", [])
+        if "handout" in classes:
             self._push_handout(classes)
 
         self.bullet_depth += 1
@@ -585,21 +623,22 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         else:
             # indent one more
             self.bullet_list.indent()
-        if 'incremental' in node.attributes.get('classes', []):
-            self.in_node['incremental'] = True
+        if "incremental" in node.attributes.get("classes", []):
+            self.in_node["incremental"] = True
 
     def depart_bullet_list(self, node):
-        if self.at('topic'):
+        if self.at("topic"):
             return
+
         p_attribs = self._get_para_attribs(node)
         if p_attribs:
             self.cur_slide.pop_style()
         attribs = self._get_text_attribs(node)
         if attribs:
             self.cur_slide.pop_style()
-        classes = node.attributes.get('classes', [])
-        if 'handout' in classes:
-            self.in_node['handout'] = False
+        classes = node.attributes.get("classes", [])
+        if "handout" in classes:
+            self.in_node["handout"] = False
             self.cur_slide.pop_element()
 
         self.bullet_depth -= 1
@@ -615,23 +654,25 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.insert_line_break += 1
         else:
             self.bullet_list.dedent()
-        if 'incremental' in node.attributes.get('classes', []):
-            self.in_node['incremental'] = False
+        if "incremental" in node.attributes.get("classes", []):
+            self.in_node["incremental"] = False
 
     visit_definition_list = visit_bullet_list
     depart_definition_list = depart_bullet_list
 
     def visit_list_item(self, node):
-        if self.at('topic'):
+        if self.at("topic"):
             return
-        if self.at('incremental'):
+
+        if self.at("incremental"):
             self.cur_slide.start_animation(preso.Animation())
         self.bullet_list.new_item()
 
     def depart_list_item(self, node):
-        if self.at('topic'):
+        if self.at("topic"):
             return
-        if self.at('incremental'):
+
+        if self.at("incremental"):
             self.cur_slide.end_animation()
 
     visit_definition_list_item = visit_list_item
@@ -648,9 +689,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.footer = None
 
     def visit_docinfo(self, node):
-        name = node.get('name', None)
+        name = node.get("name", None)
         if name:
-            if name == 'column':
+            if name == "column":
                 self.visit_column(node)
             else:
                 self.current_docinfo_states[name] = node
@@ -658,7 +699,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_docinfo = _dumb_depart
 
     def visit_column(self, node):
-        column_num = int(node.attributes['value'])
+        column_num = int(node.attributes["value"])
         left_margin = 1
         spacing = 0.5
 
@@ -670,34 +711,35 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         for frame in self.cur_slide.text_frames:
             node = frame.get_node()
-            node.attrib[ns('presentation', 'class')] = 'outline'
-            node.attrib[ns('presentation', 'style-name')] = 'pr4'
-            node.attrib[ns('svg', 'x')] = "%dcm" % left
-            node.attrib[ns('svg', 'width')] = "%dcm" % column_width
-            node.attrib[ns('svg', 'y')] = '4.577cm'
-            node.attrib[ns('svg', 'height')] = '13.86cm'
+            node.attrib[ns("presentation", "class")] = "outline"
+            node.attrib[ns("presentation", "style-name")] = "pr4"
+            node.attrib[ns("svg", "x")] = "%dcm" % left
+            node.attrib[ns("svg", "width")] = "%dcm" % column_width
+            node.attrib[ns("svg", "y")] = "4.577cm"
+            node.attrib[ns("svg", "height")] = "13.86cm"
             left += column_width + spacing
 
         self.cur_slide.push_element()
 
         attrib = {
-            'presentation:style-name':'pr5',
-            'draw:layer':'layout',
-            'svg:y':'4.577cm',
-            'svg:height':'13.86cm',
-            'svg:x':"%dcm" % left,
-            'svg:width':"%dcm" % column_width,
-            'presentation:class':'outline'
+            "presentation:style-name": "pr5",
+            "draw:layer": "layout",
+            "svg:y": "4.577cm",
+            "svg:height": "13.86cm",
+            "svg:x": "%dcm" % left,
+            "svg:width": "%dcm" % column_width,
+            "presentation:class": "outline",
         }
         self.cur_slide.add_text_frame(attrib)
         self.cur_slide.insert_line_break = 0
 
     # bibliographic elements
+
     def visit_author(self, node):
         self.visit_attribution(node)
 
     def depart_author(self, node):
-        self.depart_line(node) # add new-line
+        self.depart_line(node)  # add new-line
         self.depart_attribution(node)
 
     visit_copyright = visit_author
@@ -707,7 +749,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.visit_attribution(node)
 
     def depart_date(self, node):
-        self.depart_line(node) # add new-line
+        self.depart_line(node)  # add new-line
         self.depart_attribution(node)
 
     def visit_field_list(self, node):
@@ -723,7 +765,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         pass
 
     def visit_field_name(self, node):
-        pass # maybe put this somewhere
+        pass  # maybe put this somewhere
 
     def depart_field_name(self, node):
         pass
@@ -736,6 +778,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_comment(self, node):
         pass
+
     def depart_comment(self, node):
         pass
 
@@ -755,21 +798,24 @@ class ODPTranslator(nodes.GenericNodeVisitor):
           </text:p>
         </draw:text-box>
         """
-        if node.has_key('refid'):
+        if node.has_key("refid"):
             return
-        elif self.at('topic'):
+
+        elif self.at("topic"):
             return
-        elif self.at('field_body'):
+
+        elif self.at("field_body"):
             self.visit_attribution(node)
-            self.cur_slide.push_pending_node('text:a', {'xlink:href': '%s' % node['refuri'],
-                                                        'xlink:type': 'simple'})
+            self.cur_slide.push_pending_node(
+                "text:a", {"xlink:href": "%s" % node["refuri"], "xlink:type": "simple"}
+            )
             self.cur_slide.write(node.astext())
             self.cur_slide.pop_pending_node()
         else:
             # needs to be in a p
             # need to hack a bit, since .write usually inserts text:p and text:span
             if not self.cur_slide.cur_element or not self.cur_slide.cur_element._in_p():
-                #self.cur_slide.add_node('text:p', {})
+                # self.cur_slide.add_node('text:p', {})
                 # pyohio code
                 # we write an empty string since write() creates the paragraph
                 # we need, with the style needed to reset from a possible Title
@@ -778,21 +824,24 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 self.cur_slide.write("")
             self.cur_node = self.cur_slide.cur_element.cur_node
             if URLCOLOR:
-                style = preso.TextStyle(**{'fo:color': URLCOLOR})
+                style = preso.TextStyle(**{"fo:color": URLCOLOR})
                 self.cur_slide.push_style(style)
                 self.cur_slide.cur_element._add_styles()
                 self.cur_slide.pop_style()
-            self.cur_slide.add_node('text:a', attrib={'xlink:href': node['refuri'],
-                                                      'xlink:type': 'simple'})
-            
+            self.cur_slide.add_node(
+                "text:a", attrib={"xlink:href": node["refuri"], "xlink:type": "simple"}
+            )
+
     def depart_reference(self, node):
-        if node.has_key('refid'):
+        if node.has_key("refid"):
             return
-        elif self.at('topic'):
+
+        elif self.at("topic"):
             return
-        elif self.at('field_body'):
+
+        elif self.at("field_body"):
             self.depart_attribution(node)
-            self.cur_slide.parent_of(ns('text', 'a'))
+            self.cur_slide.parent_of(ns("text", "a"))
         else:
             self.cur_slide.cur_element.cur_node = self.cur_node
 
@@ -805,25 +854,25 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         pass
 
     def visit_container(self, node):
-        classes = node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
         self._push_handout(classes)
 
     def depart_container(self, node):
-        if self.in_node.get('handout', False):
+        if self.in_node.get("handout", False):
             self.cur_slide.pop_element()
-            self.in_node['handout'] = False
+            self.in_node["handout"] = False
 
     visit_substitution_definition = _dumb_visit
     depart_substitution_definition = _dumb_depart
 
     def visit_section(self, node):
         # first page has no section
-        if self.at('section') < 2:
+        if self.at("section") < 2:
             # don't create slide for subsections
             self._init_slide(force=True)
 
     def depart_section(self, node):
-        if self.at('section') < 1:
+        if self.at("section") < 1:
             self._reset()
 
     def visit_transition(self, node):
@@ -834,10 +883,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_transition = _dumb_depart
 
     def visit_literal(self, node):
-        style = preso.TextStyle(**{
-                'fo:font-family':preso.MONO_FONT,
-                'style:font-family-generic':"swiss",
-                'style:font-pitch':"fixed"})
+        style = preso.TextStyle(
+            **{
+                "fo:font-family": preso.MONO_FONT,
+                "style:font-family-generic": "swiss",
+                "style:font-pitch": "fixed",
+            }
+        )
         self.cur_slide.push_style(style)
 
     def depart_literal(self, node):
@@ -845,13 +897,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_style()
         self.cur_slide.pop_node()
 
-    def visit_inline(self,node):
+    def visit_inline(self, node):
         attribs = self._get_text_attribs(node)
         if attribs:
             style = preso.TextStyle(**attribs)
 
             self.cur_slide.push_style(style)
-        if 'incremental' in node.attributes.get('classes', []):
+        if "incremental" in node.attributes.get("classes", []):
             self.cur_slide.start_animation(preso.Animation())
 
     def depart_inline(self, node):
@@ -860,11 +912,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         if attribs:
             self.cur_slide.pop_style()
             self.cur_slide.pop_node()
-        if 'incremental' in node.attributes.get('classes', []):
+        if "incremental" in node.attributes.get("classes", []):
             self.cur_slide.end_animation()
 
     def visit_emphasis(self, node):
-        attribs = {'fo:font-style':'italic'}
+        attribs = {"fo:font-style": "italic"}
         style = preso.TextStyle(**attribs)
         self.cur_slide.push_style(style)
 
@@ -877,7 +929,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_title_reference = depart_emphasis
 
     def visit_strong(self, node):
-        attribs = {'fo:font-weight':'bold'}
+        attribs = {"fo:font-weight": "bold"}
         style = preso.TextStyle(**attribs)
         self.cur_slide.push_style(style)
 
@@ -889,11 +941,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     visit_term = visit_strong
 
     def depart_term(self, node):
-        self.cur_slide.write(' ')
+        self.cur_slide.write(" ")
         self.depart_strong(node)
 
     def visit_superscript(self, node):
-        attribs = {'style:text-position':'super 58%'}
+        attribs = {"style:text-position": "super 58%"}
         style = preso.TextStyle(**attribs)
         self.cur_slide.push_style(style)
 
@@ -903,7 +955,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_node()
 
     def visit_subscript(self, node):
-        attribs = {'style:text-position':'sub 58%'}
+        attribs = {"style:text-position": "sub 58%"}
         style = preso.TextStyle(**attribs)
         self.cur_slide.push_style(style)
 
@@ -916,11 +968,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_block_quote = _dumb_depart
 
     def add_block_quote(self, node):
-        attribs = {'fo:text-align':'start',
-                   'fo:margin-left':'1.2cm',
-                   'fo:margin-right':'.59cm',
-                   #'fo:margin-right':'-.9cm',
-                   }
+        attribs = {
+            "fo:text-align": "start",
+            "fo:margin-left": "1.2cm",
+            "fo:margin-right": ".59cm",
+            # 'fo:margin-right':'-.9cm',
+        }
         style = preso.ParagraphStyle(**attribs)
         self.cur_slide.push_style(style)
 
@@ -934,15 +987,14 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_attribution(self, node):
         # right justify
-        attribs = {'fo:text-align':'end',
-                   'fo:margin-right':'.9cm'
-                   }
+        attribs = {"fo:text-align": "end", "fo:margin-right": ".9cm"}
         style = preso.ParagraphStyle(**attribs)
         self.cur_slide.push_style(style)
 
         # italics
-        style = preso.TextStyle(**{'fo:font-size':S5_SIZES['small'],
-                                   'fo:font-style':'italic'})
+        style = preso.TextStyle(
+            **{"fo:font-size": S5_SIZES["small"], "fo:font-style": "italic"}
+        )
         self.cur_slide.push_style(style)
 
     def depart_attribution(self, node):
@@ -953,17 +1005,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_node()
 
     def visit_line_block(self, node):
-        #jump out of current paragraph
-        self.cur_slide.parent_of(ns('text', 'p'))
+        # jump out of current paragraph
+        self.cur_slide.parent_of(ns("text", "p"))
 
         p_attribs = self._get_para_attribs(node)
         if p_attribs:
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
         else:
             # right justify
-            P_attribs = {'fo:text-align':'end',
-                       'fo:margin-right':'.9cm'
-                       }
+            P_attribs = {"fo:text-align": "end", "fo:margin-right": ".9cm"}
             style = preso.ParagraphStyle(**p_attribs)
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
         attribs = self._get_text_attribs(node)
@@ -979,7 +1029,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_style()
         self.cur_slide.pop_node()
 
-
     def visit_line(self, node):
         pass
 
@@ -989,9 +1038,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     @preso.cwd_decorator
     def visit_image(self, node):
-        classes = node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
 
-        source = node.attributes['uri']
+        source = node.attributes["uri"]
         p = preso.Picture(os.path.abspath(source), **node.attributes)
         self.cur_slide.add_picture(p)
 
@@ -1011,7 +1060,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def visit_literal_block(self, node):
         attributes = node.attributes
         # left align
-        style = preso.ParagraphStyle(**{'fo:text-align':'start'})
+        style = preso.ParagraphStyle(**{"fo:text-align": "start"})
         self.cur_slide.push_style(style)
         # text styles
         attribs = self._get_text_attribs(node)
@@ -1019,22 +1068,25 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             style = preso.TextStyle(**attribs)
             self.cur_slide.push_style(style)
 
-        if attributes['classes'] and 'code-block' in attributes['classes']:
+        if attributes["classes"] and "code-block" in attributes["classes"]:
             node_input = node.astext()
-            language = node.attributes['language']
+            language = node.attributes["language"]
 
             self.cur_slide.add_code(node_input, language)
             # insert a new line after
             self.cur_slide.insert_line_break += 1
 
         else:
-            style = preso.TextStyle(**{
-                    'fo:font-family':preso.MONO_FONT,
-                    'style:font-family-generic':"swiss",
-                    'style:font-pitch':"fixed"})
+            style = preso.TextStyle(
+                **{
+                    "fo:font-family": preso.MONO_FONT,
+                    "style:font-family-generic": "swiss",
+                    "style:font-pitch": "fixed",
+                }
+            )
             self.cur_slide.push_style(style)
             node_input = node.astext()
-            chunks = node_input.split('\n')
+            chunks = node_input.split("\n")
             for chunk in chunks:
                 self.cur_slide.write(chunk)
                 self.cur_slide.insert_line_break += 1
@@ -1045,7 +1097,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_style()
         self.cur_slide.pop_node()
         attributes = node.attributes
-        if attributes['classes'] and 'code-block' in attributes['classes']:
+        if attributes["classes"] and "code-block" in attributes["classes"]:
             pass
         else:
             self.cur_slide.pop_style()
@@ -1060,24 +1112,25 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_footnote_reference(self, node):
         self.visit_superscript(node)
-        self.cur_slide.write('[')
+        self.cur_slide.write("[")
 
     def depart_footnote_reference(self, node):
-        self.cur_slide.write(']')
+        self.cur_slide.write("]")
         self.depart_superscript(node)
 
     def visit_label(self, node):
         # part of footnote
-        if self.at('footnote'):
-            self.cur_slide.write('[')
+        if self.at("footnote"):
+            self.cur_slide.write("[")
 
     def depart_label(self, node):
-        if self.at('footnote'):
-            self.cur_slide.write('] ')
+        if self.at("footnote"):
+            self.cur_slide.write("] ")
 
     def visit_enumerated_list(self, node):
-        if self.at('topic'):
+        if self.at("topic"):
             return
+
         self.bullet_depth += 1
         if not self.bullet_list:
             self.bullet_list = preso.NumberList(self.cur_slide)
@@ -1085,15 +1138,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         else:
             # indent one more
             self.bullet_list.indent()
-        if 'incremental' in node.attributes.get('classes', []):
-            self.in_node['incremental'] = True
+        if "incremental" in node.attributes.get("classes", []):
+            self.in_node["incremental"] = True
 
     def depart_enumerated_list(self, node):
         self.depart_bullet_list(node)
 
     def visit_doctest_block(self, node):
         node_input = node.astext()
-        language = 'pycon'
+        language = "pycon"
         self.cur_slide.add_code(node_input, language)
         # insert a new line after
         self.cur_slide.insert_line_break += 1
@@ -1134,9 +1187,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             </tbody>
           </tgroup>
         </table>"""
-        classes = node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
         if classes:
-            table_attrib = {'table:template-name':classes[0]}
+            table_attrib = {"table:template-name": classes[0]}
         else:
             table_attrib = None
         table = preso.TableFrame(self.cur_slide, table_attrib=table_attrib)
@@ -1145,11 +1198,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def depart_table(self, node):
         self.cur_slide.pop_element()
         if self.table_title:
-            props = self.cur_slide.get_props('outline')
-            props['y'] = '{}cm'.format(.8*preso.SLIDE_HEIGHT)
+            props = self.cur_slide.get_props("outline")
+            props["y"] = "{}cm".format(.8 * preso.SLIDE_HEIGHT)
             self.cur_slide.add_text_frame(props=props)
-            style = preso.ParagraphStyle(**{'fo:text-align':'center'})
-            tstyle = preso.TextStyle(**{'fo:font-style':'italic'})
+            style = preso.ParagraphStyle(**{"fo:text-align": "center"})
+            tstyle = preso.TextStyle(**{"fo:font-style": "italic"})
             self.cur_slide.push_style(style)
             self.cur_slide.push_style(tstyle)
             self.cur_slide.write(self.table_title)
@@ -1159,12 +1212,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     def visit_row(self, node):
         self.cur_slide.cur_element.add_row({})
-        if self.at('thead'):
-            style = preso.TextStyle(**{'fo:font-weight':'bold'})
+        if self.at("thead"):
+            style = preso.TextStyle(**{"fo:font-weight": "bold"})
             self.cur_slide.push_style(style)
 
     def depart_row(self, node):
-        if self.at('thead'):
+        if self.at("thead"):
             self.cur_slide.pop_style()
 
     def visit_thead(self, node):
@@ -1192,26 +1245,26 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     depart_tbody = _dumb_depart
 
     def visit_hint(self, node):
-        return self._visit_hint(node, 'Hint')
+        return self._visit_hint(node, "Hint")
 
     def _visit_hint(self, node, name):
         if self.cur_slide.text_frames:
             # should adjust width of other frame
             node = self.cur_slide.text_frames[-1].get_node()
-            node.attrib['svg:width'] = '12.296cm'
+            node.attrib["svg:width"] = "12.296cm"
         else:
             self.cur_slide.add_text_frame()
 
         self.cur_slide.push_element()
-        #put the hint on the right side
+        # put the hint on the right side
         attrib = {
-            'presentation:style-name':'Default-subtitle',
-            'draw:layer':'layout',
-            'svg:width':'12.296cm',
-            'svg:height':'13.86cm',
-            'svg:x':'14.311cm',
-            'svg:y':'4.577cm',
-            'presentation:class':'subtitle'
+            "presentation:style-name": "Default-subtitle",
+            "draw:layer": "layout",
+            "svg:width": "12.296cm",
+            "svg:height": "13.86cm",
+            "svg:x": "14.311cm",
+            "svg:y": "4.577cm",
+            "presentation:class": "subtitle",
         }
         self.cur_slide.add_text_frame(attrib)
         self.cur_slide.write(name)
@@ -1222,21 +1275,21 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_element()
 
     def visit_sidebar(self, node):
-        return self._visit_hint(node, 'Sidebar')
+        return self._visit_hint(node, "Sidebar")
 
     depart_sidebar = depart_hint
 
     def visit_grid(self, node):
-        raw = node.attributes.get('value')
-        pos, mat = raw.split(',')
-        w,h = mat.split('x')
+        raw = node.attributes.get("value")
+        pos, mat = raw.split(",")
+        w, h = mat.split("x")
         preso.add_cell(self.preso, *map(int, [pos, w, h]))
 
     def depart_grid(self, node):
         self.cur_slide.grid_w_h_x_y = None
 
     def visit_textbox(self, node):
-        raw = node.attributes.get('value')
+        raw = node.attributes.get("value")
         props = json.loads(raw)
         self.cur_slide.push_element()
         self.cur_slide.add_text_frame(props=props)
@@ -1245,48 +1298,53 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.pop_element()
 
     def _get_para_attribs(self, node):
-        classes = node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
         attribs = {}
         for c in classes:
-            if c == 'center':
-                attribs.update({'fo:text-align':'center',
-                                'fo:margin-left':'1.2cm',
-                                'fo:margin-right':'.9cm',
-                                })
-            elif c == 'right':
-                attribs.update({'fo:text-align':'end',
-                                'fo:margin-right':'.9cm'
-                                })
-            elif c == 'left':
-                attribs.update({'fo:text-align':'start',
-                                'fo:margin-left':'1.2cm',
-                                'fo:margin-right':'5.9cm',
-                                })
-                #pass # default
+            if c == "center":
+                attribs.update(
+                    {
+                        "fo:text-align": "center",
+                        "fo:margin-left": "1.2cm",
+                        "fo:margin-right": ".9cm",
+                    }
+                )
+            elif c == "right":
+                attribs.update({"fo:text-align": "end", "fo:margin-right": ".9cm"})
+            elif c == "left":
+                attribs.update(
+                    {
+                        "fo:text-align": "start",
+                        "fo:margin-left": "1.2cm",
+                        "fo:margin-right": "5.9cm",
+                    }
+                )
+            # pass # default
             mapping = USER_DEFINED_PARAGRAPH_CLASSES.get(c, None)
             if mapping:
                 attribs.update(mapping)
         return attribs
 
     def _get_text_attribs(self, node):
-        classes = node.attributes.get('classes', [])
+        classes = node.attributes.get("classes", [])
         attribs = {}
         for c in classes:
-            if c.startswith('font-size'):  # like font-size:200pt
+            if c.startswith("font-size"):  # like font-size:200pt
                 size = c.split("-")[-1]
-                attribs['fo:font-size'] = size
+                attribs["fo:font-size"] = size
             elif c in S5_COLORS:
-                attribs['fo:color'] = S5_COLORS[c]
+                attribs["fo:color"] = S5_COLORS[c]
             elif c in S5_SIZES:
-                attribs['fo:font-size'] = S5_SIZES[c]
+                attribs["fo:font-size"] = S5_SIZES[c]
             elif c in USER_DEFINED_FONTS:
                 res = USER_DEFINED_FONTS[c]
                 if isinstance(res, dict):
                     attribs.update(res)
                 else:
                     # just a string with font name
-                    attribs['fo:font-family'] = c
+                    attribs["fo:font-family"] = c
         return attribs
+
 
 def num_string_to_list(numstr):
     """
@@ -1297,18 +1355,18 @@ def num_string_to_list(numstr):
 
     """
     nums = []
-    if ',' in numstr:
-        comma_delim = numstr.split(',')
+    if "," in numstr:
+        comma_delim = numstr.split(",")
         for part in comma_delim:
-            if '-' in part:
-                start, end = [int(x) for x in part.split('-')]
-                for num in range(start, end+1):
+            if "-" in part:
+                start, end = [int(x) for x in part.split("-")]
+                for num in range(start, end + 1):
                     nums.append(num)
             else:
                 nums.append(int(part))
-    elif '-' in numstr:
-        start, end = [int(x) for x in numstr.split('-')]
-        for num in range(start, end+1):
+    elif "-" in numstr:
+        start, end = [int(x) for x in numstr.split("-")]
+        for num in range(start, end + 1):
             nums.append(num)
     else:
         nums.append(int(numstr))
@@ -1319,17 +1377,20 @@ class BinaryFileOutput(io.FileOutput):
     """
     A version of docutils.io.FileOutput which writes to a binary file.
     """
+
     def open(self):
         try:
-            self.destination = open(self.destination_path, 'wb')
+            self.destination = open(self.destination_path, "wb")
 
         except IOError as error:
             if not self.handle_io_errors:
                 raise
-            sys.stderr.write('{}: {}'.format(error.__class__.__name__,
-                                            error))
-            sys.stderr.write('Unable to open destination file for writing '
-                             '({}).  Exiting.'.format(self.destination_path))
+
+            sys.stderr.write("{}: {}".format(error.__class__.__name__, error))
+            sys.stderr.write(
+                "Unable to open destination file for writing "
+                "({}).  Exiting.".format(self.destination_path)
+            )
             sys.exit(1)
         self.opened = 1
 
@@ -1338,35 +1399,45 @@ def main(prog_args=None):
     prog_args = prog_args or sys.argv
     argv = None
     reader = standalone.Reader()
-    reader_name = 'standalone'
+    reader_name = "standalone"
     writer = Writer()
-    writer_name = 'pseudoxml'
+    writer_name = "pseudoxml"
     parser = None
-    parser_name = 'restructuredtext'
+    parser_name = "restructuredtext"
     settings = None
     settings_spec = None
     settings_overrides = None
     config_section = None
     enable_exit_status = 1
     usage = default_usage
-    publisher = Publisher(reader, parser, writer, settings,
-                          destination_class=BinaryFileOutput)
+    publisher = Publisher(
+        reader, parser, writer, settings, destination_class=BinaryFileOutput
+    )
     publisher.set_components(reader_name, parser_name, writer_name)
-    description = ('Generates OpenDocument/OpenOffice/ODF slides from '
-                   'standalone reStructuredText sources.  ' + default_description)
+    description = (
+        "Generates OpenDocument/OpenOffice/ODF slides from "
+        "standalone reStructuredText sources.  " + default_description
+    )
 
-    output = publisher.publish(argv, usage, description,
-                               settings_spec, settings_overrides,
-                               config_section=config_section,
-                               enable_exit_status=enable_exit_status)
+    output = publisher.publish(
+        argv,
+        usage,
+        description,
+        settings_spec,
+        settings_overrides,
+        config_section=config_section,
+        enable_exit_status=enable_exit_status,
+    )
 
 
 def _test():
     import doctest
+
     doctest.testmod()
 
+
 if __name__ == "__main__":
-    if '--doctest' in sys.argv:
+    if "--doctest" in sys.argv:
         _test()
     else:
         sys.exit(main(sys.argv) or 0)
