@@ -268,6 +268,8 @@ class Preso(object):
         elif template_paths:
             for p in template_paths:
                 self.set_template(p)
+        # Reset PREFIX (makes testing easier)
+        TextStyle.TEXT_COUNT = 0
 
     @classmethod
     def from_file(cls, path):
