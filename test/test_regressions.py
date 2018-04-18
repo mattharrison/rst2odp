@@ -71,7 +71,6 @@ class TestRegressions(unittest.TestCase):
         parser.parse(input, document)
         format = 'pretty'
         optargs = {'debug': 0, 'attributes': 0}
-
         output = quicktest.format(format, input, document, optargs)
         return output
 
@@ -153,7 +152,48 @@ Run with::
         desired='bad'
         self.check_output(rst, desired, '/tmp/code.xml')
 
-    def test_email_42(self):
+    def test_vert_spacing_42(self):
+        rst = '''Doc attribute exploration
+=========================
+
+
+:Author: Ann Author
+:Email: foo@bar.com
+:Institute: Data Science Institute, ICL
+:Date: 2017-11-30
+:Twitter: @mehere
+:Organisation: My university
+:Tagline: Only connect
+
+.. email address is rendered as a hyperlinked "foo@bar.comfoo@bar.com"
+
+        '''
+        desired = '''<draw:text-box>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">Ann Author</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">foo@bar.com</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">Data Science Institute, ICL</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">2017-11-30</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">@mehere</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">My university</text:span>
+               </text:p>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">Only connect</text:span>
+               </text:p>
+             </draw:text-box>'''
+        self.check_output(rst, desired, '/tmp/code.xml')
+
+    def test_email_43(self):
         rst = """Doc attribute exploration
 =========================
 
@@ -168,23 +208,17 @@ Run with::
 
         """
         desired = '''<draw:text-box>
-               <text:p text:style-name="P2">
-                 <text:span text:style-name="T0">
-                   Ann Author
-                   <text:line-break/>
-                 </text:span>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">Ann Author</text:span>
                </text:p>
-               <text:p text:style-name="P2">
+               <text:p text:style-name="P0">
                  <text:span text:style-name="T0">foo@bar.com</text:span>
                </text:p>
-               <text:p text:style-name="P2">
+               <text:p text:style-name="P0">
                  <text:span text:style-name="T0">Data Science Institute, ICL</text:span>
                </text:p>
-               <text:p text:style-name="P2">
-                 <text:span text:style-name="T0">
-                   2017-11-30
-                   <text:line-break/>
-                 </text:span>
+               <text:p text:style-name="P0">
+                 <text:span text:style-name="T0">2017-11-30</text:span>
                </text:p>
              </draw:text-box>'''
         self.check_output(rst, desired, '/tmp/code.xml')

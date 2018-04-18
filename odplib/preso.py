@@ -270,7 +270,7 @@ class Preso(object):
                 self.set_template(p)
         # Reset PREFIX (makes testing easier)
         TextStyle.TEXT_COUNT = 0
-
+        ParagraphStyle.TEXT_COUNT = 0
     @classmethod
     def from_file(cls, path):
         zipfile = zipwrap.Zippier(path, True)
