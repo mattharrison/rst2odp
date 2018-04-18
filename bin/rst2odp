@@ -309,6 +309,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         self.in_node = {}  # map of tagname to True if we are in/under this
         self.current_docinfo_states = {}
+        self.in_http_link = False
         self._reset()
 
     def _reset(self):
@@ -538,9 +539,12 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at("substitution_definition"):
             pass
         elif self.at("reference"):
-            # doesn't like formatting inside of text:a tag
-            # from (visit_reference)
-            self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+            if self.in_http_link:
+                # doesn't like formatting inside of text:a tag
+                # from (visit_reference)
+                self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+            else:
+                self.cur_slide.write(node.astext())
         elif self.at("doctest_block"):
             pass
         elif self.at("field_name"):
@@ -824,11 +828,15 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
         elif self.at("field_body"):
             self.visit_attribution(node)
-            self.cur_slide.push_pending_node(
+            if 'mailto:' in node["refuri"]:
+                pass
+            else:
+                self.in_http_link = True
+                self.cur_slide.push_pending_node(
                 "text:a", {"xlink:href": "%s" % node["refuri"], "xlink:type": "simple"}
             )
-            self.cur_slide.write(node.astext())
-            self.cur_slide.pop_pending_node()
+                self.cur_slide.write(node.astext())
+                self.cur_slide.pop_pending_node()
         else:
             # needs to be in a p
             # need to hack a bit, since .write usually inserts text:p and text:span
@@ -851,6 +859,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             )
 
     def depart_reference(self, node):
+        self.in_http_link = False
         if node.has_key("refid"):
             return
 

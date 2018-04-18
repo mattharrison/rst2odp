@@ -10,6 +10,7 @@ from docutils.readers import standalone
 from docutils.core import Publisher, default_description, \
     default_usage
 
+import quicktest
 from types import ModuleType
 #rst2odp = ModuleType('rst2odp')
 #exec open('../bin/rst2odp') in rst2odp.__dict__
@@ -57,8 +58,23 @@ class TestRegressions(unittest.TestCase):
 
     def check_output(self, rst, desired, filename='/tmp/foo.xml', outname='/tmp/out'):
         content = self._to_odp_content(rst, filename, odp_name=outname)
-        self.assertTrue(_contains_lines(content, desired), "%s should have %s" %(content, desired))
-        
+        tree = self.get_tree(rst)
+        self.assertTrue(_contains_lines(content, desired), "%s should have %s \nTree: %s" %(content, desired, tree))
+
+    def get_tree(self, rst):
+        parser = quicktest.Parser()
+        input = rst
+        source_path='test file'
+        settings = quicktest.OptionParser(components=(quicktest.Parser,)).get_default_values()
+
+        document = quicktest.new_document(source_path, settings)
+        parser.parse(input, document)
+        format = 'pretty'
+        optargs = {'debug': 0, 'attributes': 0}
+
+        output = quicktest.format(format, input, document, optargs)
+        return output
+
     def test_basic(self):
         rst = """
 Title
@@ -137,6 +153,23 @@ Run with::
         desired='bad'
         self.check_output(rst, desired, '/tmp/code.xml')
 
+    def test_email_42(self):
+        rst = """Doc attribute exploration
+=========================
+
+
+:Author: Ann Author
+:Email: foo@bar.com
+:Institute: Data Science Institute, ICL
+:Date: 2017-11-30
+
+.. email address is rendered as a hyperlinked "foo@bar.comfoo@bar.com"
+
+
+        """
+        desired = '''foo'''
+        self.check_output(rst, desired, '/tmp/code.xml')
+
     def test_from_script(self):
         rst = """From script
 ------------
@@ -197,16 +230,16 @@ txt before code
     a = 3
 """
         desired='''<text:p text:style-name="P1">
-                 <text:span text:style-name="T3">
+                 <text:span text:style-name="T1">
                    a
                    <text:s/>
                  </text:span>
-                 <text:span text:style-name="T5">=</text:span>
-                 <text:span text:style-name="T3">
+                 <text:span text:style-name="T3">=</text:span>
+                 <text:span text:style-name="T1">
                    <text:s/>
                  </text:span>
-                 <text:span text:style-name="T5">3</text:span>
-                 <text:span text:style-name="T3">
+                 <text:span text:style-name="T3">3</text:span>
+                 <text:span text:style-name="T1">
                    <text:line-break/>
                  </text:span>
                </text:p>'''
