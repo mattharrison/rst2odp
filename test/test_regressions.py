@@ -167,7 +167,26 @@ Run with::
 
 
         """
-        desired = '''foo'''
+        desired = '''<draw:text-box>
+               <text:p text:style-name="P2">
+                 <text:span text:style-name="T0">
+                   Ann Author
+                   <text:line-break/>
+                 </text:span>
+               </text:p>
+               <text:p text:style-name="P2">
+                 <text:span text:style-name="T0">foo@bar.com</text:span>
+               </text:p>
+               <text:p text:style-name="P2">
+                 <text:span text:style-name="T0">Data Science Institute, ICL</text:span>
+               </text:p>
+               <text:p text:style-name="P2">
+                 <text:span text:style-name="T0">
+                   2017-11-30
+                   <text:line-break/>
+                 </text:span>
+               </text:p>
+             </draw:text-box>'''
         self.check_output(rst, desired, '/tmp/code.xml')
 
     def test_from_script(self):
