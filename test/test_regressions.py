@@ -153,7 +153,31 @@ Run with:
   $ python3 hello.py
 
 """
-        desired = '''foo'''
+        desired = '''<draw:text-box>
+               <text:p text:style-name="P1">
+                 Make file
+                 <text:s/>
+                 <text:span text:style-name="T0">hello.py</text:span>
+                  with:
+               </text:p>
+               <text:p text:style-name="P1">
+                 <text:span text:style-name="T0">
+                   print(&quot;hello world&quot;)
+                   <text:line-break/>
+                 </text:span>
+               </text:p>
+               <text:p text:style-name="P1">Run with:</text:p>
+               <text:p text:style-name="P1">
+                 <text:span text:style-name="T1">$</text:span>
+                 <text:span text:style-name="T0">
+                   <text:s/>
+                   python3
+                   <text:s/>
+                   hello.py
+                   <text:line-break/>
+                 </text:span>
+               </text:p>
+             </draw:text-box>'''
         self.check_output(rst, desired, '/tmp/code.xml')
 
 
@@ -173,19 +197,19 @@ txt before code
     a = 3
 """
         desired='''<text:p text:style-name="P1">
-              <text:span text:style-name="T2">
-                a
-                <text:s/>
-              </text:span>
-              <text:span text:style-name="T4">=</text:span>
-              <text:span text:style-name="T2">
-                <text:s/>
-              </text:span>
-              <text:span text:style-name="T4">3</text:span>
-              <text:span text:style-name="T2">
-                <text:line-break/>
-              </text:span>
-            </text:p>'''
+                 <text:span text:style-name="T3">
+                   a
+                   <text:s/>
+                 </text:span>
+                 <text:span text:style-name="T5">=</text:span>
+                 <text:span text:style-name="T3">
+                   <text:s/>
+                 </text:span>
+                 <text:span text:style-name="T5">3</text:span>
+                 <text:span text:style-name="T3">
+                   <text:line-break/>
+                 </text:span>
+               </text:p>'''
         self.check_output(rst, desired, '/tmp/code.xml')
 
     def te2st_styled_before_code(self):
@@ -234,6 +258,11 @@ def _contains_lines(haystack, needle, ignore_whitespace=True):
     >>> _contains_lines(range(4), range(1,5))
     False
     """
+    if isinstance(haystack, str):
+        haystack = haystack.split('\n')
+    if isinstance(needle, str):
+        needle = needle.split('\n')
+    
     if ignore_whitespace:
         haystack = [str(x).strip() for x in haystack]
         needle = [str(x).strip() for x in needle]

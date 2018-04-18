@@ -105,6 +105,21 @@ Put image in a second cell of 3 columns and 1 row
      .. image:: img/test.png
 
 
+Who Created Python?
+-------------------
+
+.. grid:: 1,2x1
+
+   .. class:: fit_top_left
+
+     .. image:: img/test.png
+
+
+.. grid:: 2,2x1
+
+Python was created by Dutch programmer Guido van Rossum in 1989.
+He wanted to create a tool to allow for easy scripting
+  
 
 
 --------
