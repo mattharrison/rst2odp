@@ -226,6 +226,41 @@ class SetAnimationBlock(rst.Directive):
 rst.directives.register_directive("animation", SetAnimationBlock)
 
 
+class raw(nodes.General, nodes.Inline, nodes.Element):
+    pass
+
+
+class SetRawBlock(rst.Directive):
+    required_arguments = 0
+    optional_arguments = 0
+    has_content = True
+
+    def run(self):
+        node = raw()#odp_path=odp_path, page_num=page_num)
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
+
+
+rst.directives.register_directive("raw", SetRawBlock)
+
+class rawstyle(nodes.General, nodes.Inline, nodes.Element):
+    pass
+
+
+class SetRawstyleBlock(rst.Directive):
+    required_arguments = 0
+    optional_arguments = 0
+    has_content = True
+
+    def run(self):
+        node = rawstyle()#odp_path=odp_path, page_num=page_num)
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
+
+
+rst.directives.register_directive("rawstyle", SetRawstyleBlock)
+
+
 class Writer(writers.Writer):
     settings_spec = (
         "ODP Specific Options",  # option group title
@@ -360,8 +395,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
     def dispatch_visit(self, node):
         # Easier just to throw nodes I'm in in a dict, than keeping
         # state for each one
-
-        count = self.in_node.setdefault(node.tagname, 0)
+        self.in_node.setdefault(node.tagname, 0)
         self.in_node[node.tagname] += 1
         nodes.GenericNodeVisitor.dispatch_visit(self, node)
 
@@ -424,9 +458,27 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         else:
             pass
 
+    def visit_raw(self, node):
+        pass
+
+    def depart_raw(self, node):
+        pass
+
+    def visit_rawstyle(self, node):
+        pass
+
+    def depart_rawstyle(self, node):
+        pass
+
     def visit_Text(self, node):
         if self.at("literal_block"):
             pass
+        elif self.at('raw'):
+            txt = node.astext()
+            self.cur_slide.raw(txt)
+        elif self.at('rawstyle'):
+            txt = node.astext()
+            self.cur_slide.raw_style(txt)
         elif self.bullet_list and not self.at(
             "handout"
         ):  # !!!need to deal w/ bullets in handout
@@ -820,7 +872,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
           </text:p>
         </draw:text-box>
         """
-        if node.has_key("refid"):
+        if "refid" in node:
             return
 
         elif self.at("topic"):
@@ -833,8 +885,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             else:
                 self.in_http_link = True
                 self.cur_slide.push_pending_node(
-                "text:a", {"xlink:href": "%s" % node["refuri"], "xlink:type": "simple"}
-            )
+                    "text:a", {"xlink:href": "%s" % node["refuri"], "xlink:type": "simple"}
+                )
                 self.cur_slide.write(node.astext())
                 self.cur_slide.pop_pending_node()
         else:
@@ -1040,7 +1092,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
         else:
             # right justify
-            P_attribs = {"fo:text-align": "end", "fo:margin-right": ".9cm"}
+            p_attribs = {"fo:text-align": "end", "fo:margin-right": ".9cm"}
             style = preso.ParagraphStyle(**p_attribs)
             self.cur_slide.push_style(preso.ParagraphStyle(**p_attribs))
         attribs = self._get_text_attribs(node)
@@ -1065,8 +1117,6 @@ class ODPTranslator(nodes.GenericNodeVisitor):
 
     @preso.cwd_decorator
     def visit_image(self, node):
-        classes = node.attributes.get("classes", [])
-
         source = node.attributes["uri"]
         p = preso.Picture(os.path.abspath(source), **node.attributes)
         self.cur_slide.add_picture(p)
@@ -1316,7 +1366,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         self.cur_slide.grid_w_h_x_y = None
 
     def visit_animation(self, node):
-        self.anim_parent =  self.cur_slide._page
+        self.anim_parent = self.cur_slide._page
         self.anim_ignore = set()
         # If we have content before any animation make
         # sure we ignore that
@@ -1478,7 +1528,7 @@ def main(prog_args=None):
         "standalone reStructuredText sources.  " + default_description
     )
 
-    output = publisher.publish(
+    publisher.publish(
         argv,
         usage,
         description,

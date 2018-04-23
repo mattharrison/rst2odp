@@ -24,10 +24,10 @@ try:
     import pygments
     from pygments import formatter, lexers
 
-    pygmentsAvail = True
-except:
+    PYGMENTS_FOUND = True
+except ImportError:
     sys.stderr.write("Could not import pygments code highlighting will not work")
-    pygmentsAvail = False
+    PYGMENTS_FOUND = False
 from odplib import zipwrap
 from PIL import Image
 from odplib import imagescale
@@ -103,7 +103,7 @@ def cwd_decorator(func):
                 break
 
         if found:
-            directory = os.path.dirname(arg)
+            directory = os.path.dirname(found)
             if directory:
                 os.chdir(directory)
         data = func(*args, **kw)
@@ -148,8 +148,7 @@ def fix_ns(k):
         new_k = "{{{}}}{}".format(url, name)
         return new_k
 
-    else:
-        return k
+    return k
 
 
 def update_attrib(attrib):
@@ -271,6 +270,7 @@ class Preso(object):
         # Reset PREFIX (makes testing easier)
         TextStyle.TEXT_COUNT = 0
         ParagraphStyle.TEXT_COUNT = 0
+
     @classmethod
     def from_file(cls, path):
         zipfile = zipwrap.Zippier(path, True)
@@ -311,7 +311,7 @@ class Preso(object):
 
     def _init_xml(self):
         self._root = el("office:document-content", attrib=DOC_CONTENT_ATTRIB)
-        o_scripts = sub_el(self._root, "office:scripts")
+        sub_el(self._root, "office:scripts")
         self._auto_styles = sub_el(self._root, "office:automatic-styles")
         o_body = sub_el(self._root, "office:body")
         self._presentation = sub_el(o_body, "office:presentation")
@@ -374,7 +374,7 @@ class Preso(object):
         self._auto_styles.append(style_node)
 
     def import_slide(self, preso_file, page_num):
-        odp = zipwrap.Zippier(preso_file, force_exist=True)
+        odp = zipwrap.Zippier(preso_file)
         content = odp.cat("content.xml", False).encode("utf-8")
         content_tree = et.fromstring(content)
         slides = content_tree.findall(
@@ -405,8 +405,6 @@ class Preso(object):
                 data = fin.read()
                 return data
 
-    def get_xpath(self, namespace, element):
-        return get_xpath(namespace, element)
 
     def set_template(self, template_file):
         global SLIDE_WIDTH
@@ -432,8 +430,8 @@ class Preso(object):
         zip_odp.write("styles.xml", xml_data)
 
     def get_properties(self, master_page_name, class_name):
-        for template in self.template:
-            prop = template.get_frame_properties(master_page_name, class_name)
+        for template in self.template_files:
+            props = template.get_frame_properties(master_page_name, class_name)
             if props:
                 return props
 
@@ -456,12 +454,12 @@ class Preso(object):
         out.write("META-INF/manifest.xml", self.manifest_xml(out))
         return out
 
-    def manifest_xml(self, zip):
+    def manifest_xml(self, zippy):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
 """
-        files = zip.ls("/")
+        files = zippy.ls("/")
         for filename in files:
             filetype = ""
             if filename.endswith(".xml"):
@@ -594,7 +592,7 @@ class Animation(object):
         )
         if self.ids:
             for id in self.ids:
-                anim_set = sub_el(
+                sub_el(
                     par3,
                     "anim:set",
                     attrib={
@@ -609,8 +607,7 @@ class Animation(object):
                 )
 
         else:
-
-            anim_set = sub_el(
+            sub_el(
                 par3,
                 "anim:set",
                 attrib={
@@ -736,7 +733,7 @@ class Picture(object):
             y += frame_y
 
         res = [str(foo) + measurement for foo in [x, y, w, h]]
-        return [str(foo) + measurement for foo in [x, y, w, h]]
+        return res
 
     def get_width(self, measurement=None):
         if measurement is None or measurement == "cm":
@@ -860,11 +857,25 @@ class Slide(object):
             },
         )
         self.set_layout("AL1T0")
-        office_forms = sub_el(
+        sub_el(
             self._page,
             "office:forms",
             attrib={"form:automatic-focus": "false", "form:apply-design-mode": "false"},
         )
+
+    def _add_raw_to_node(self, content, parent):
+        # need to add all those namespaces...
+        root = '<root {}>'.format(' '.join('{}="{}"'.format(k,v) for k, v in DOC_CONTENT_ATTRIB.items()))
+        end_root = '</root>'
+        src = root + content + end_root
+        for child in et.fromstring(src).getchildren():
+            parent.append(child)
+
+    def raw(self, content):
+        self._add_raw_to_node(content, self._page)
+
+    def raw_style(self, content):
+        self._add_raw_to_node(content, self.preso._auto_styles)
 
     def update_style(self, mapping):
         """Use to update fill-color"""
@@ -942,14 +953,14 @@ class Slide(object):
         self.pending_styles.append(style)
 
     def pop_style(self):
-        popped = self.pending_styles.pop()
+        self.pending_styles.pop()
 
     def add_code(self, code, language):
         if self.cur_element is None:
             self.add_text_frame()
         style = ParagraphStyle(**{"fo:text-align": "start"})
         self.push_style(style)
-        output = pygments.highlight(
+        pygments.highlight(
             code,
             lexers.get_lexer_by_name(language, stripall=True),
             OdtCodeFormatter(self.cur_element, self._preso, style=PYGMENTS_STYLE),
@@ -1686,11 +1697,10 @@ class TextStyle(object):
         if key in self.__class__.ATTRIB2NAME:
             return self.__class__.ATTRIB2NAME[key]
 
-        else:
-            name = self.PREFIX % self.__class__.TEXT_COUNT
-            self.__class__.TEXT_COUNT += 1
-            self.__class__.ATTRIB2NAME[key] = name
-            return name
+        name = self.PREFIX % self.__class__.TEXT_COUNT
+        self.__class__.TEXT_COUNT += 1
+        self.__class__.ATTRIB2NAME[key] = name
+        return name
 
     def style_node(self, additional_style_attrib=None):
         """
@@ -1741,7 +1751,7 @@ class TextFrameStyle(TextStyle):
     PREFIX = "TF%d"
 
 
-if pygmentsAvail:
+if PYGMENTS_FOUND:
 
     class OdtCodeFormatter(formatter.Formatter):
 

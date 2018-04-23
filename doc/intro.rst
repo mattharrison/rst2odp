@@ -122,6 +122,28 @@ He wanted to create a tool to allow for easy scripting
   
 
 
+Raw Content
+-----------
+
+Raw content (xml) must be aligned on indentation (ie ignore nesting)
+
+.. rawstyle::
+
+   <style:style style:name="gr2" style:family="graphic" style:parent-style-name="standard">
+   <style:graphic-properties svg:stroke-opacity="0%" draw:fill-color="#ed1c24" draw:opacity="72%" draw:textarea-horizontal-align="justify" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" fo:min-height="3.882cm" fo:min-width="3.632cm"/>
+   </style:style>
+
+
+.. raw::
+
+   <draw:custom-shape draw:style-name="gr2" draw:text-style-name="P3" draw:layer="layout" svg:width="5.842cm" svg:height="5.842cm" svg:x="8.128cm" svg:y="3.81cm">
+   <text:p text:style-name="P2">Progamming</text:p>
+   <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:glue-points="10800 0 3163 3163 0 10800 3163 18437 10800 21600 18437 18437 21600 10800 18437 3163" draw:text-areas="3163 3163 18437 18437" draw:type="ellipse" draw:enhanced-path="U 10800 10800 10800 10800 0 360 Z N"/>
+   </draw:custom-shape>
+
+
+
+
 --------
 
 .. class:: center huge
