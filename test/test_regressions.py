@@ -84,6 +84,18 @@ hello world
         desired = """<text:p text:style-name="P1">hello world</text:p>"""
         self.check_output(rst, desired, outname='/tmp/basic.odp')
 
+    def test_link(self):
+        rst = """
+Title
+-----
+
+https://github.com/talkpython/illustrated-python-3-course
+"""
+        desired = """ <draw:text-box>
+               <text:p text:style-name="P1">https://github.com/talkpython/illustrated-python-3-course</text:p>
+             </draw:text-box>"""
+        self.check_output(rst, desired, outname='/tmp/link.odp')
+
     def test_2_paragraphs(self):
         rst = """
 2 para
@@ -266,6 +278,26 @@ Run with:
              </draw:text-box>'''
         self.check_output(rst, desired, '/tmp/code.xml')
 
+
+    def test_textbox_with_size(self):
+        rst = """
+Who Created Python?
+-------------------
+
+.. grid:: 2,2x1
+
+Python was created by Dutch programmer Guido van Rossum in 1989.
+He wanted to create a tool to allow for easy scripting
+  
+.. class:: font-size:8pt
+
+  .. textbox:: {"x": "2cm", "y": "18.2cm", "width": "25cm"}
+
+     Image via https://en.wikipedia.org/wiki/Guido_van_Rossum
+
+        """
+        desired = 'foo'
+        self.check_output(rst, desired, '/tmp/code.xml')
 
     def test_normal_sized_styled_before_code(self):
         rst ="""

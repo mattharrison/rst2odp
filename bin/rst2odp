@@ -594,8 +594,13 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             if self.in_http_link:
                 # doesn't like formatting inside of text:a tag
                 # from (visit_reference)
-                self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+                
+                if self.cur_slide.cur_element and self.cur_slide.cur_element._in_p():
+                    self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
+                else:
+                    self.cur_slide.write(node.astext())
             else:
+                #self.cur_slide.write(node.astext(), add_p_style=False, add_t_style=False)
                 self.cur_slide.write(node.astext())
         elif self.at("doctest_block"):
             pass
@@ -872,6 +877,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
           </text:p>
         </draw:text-box>
         """
+        txt = node.astext()
+        #import pdb; pdb.set_trace()
         if "refid" in node:
             return
 
@@ -879,6 +886,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             return
 
         elif self.at("field_body"):
+            
+            
             self.visit_attribution(node)
             if 'mailto:' in node["refuri"]:
                 pass
@@ -889,6 +898,8 @@ class ODPTranslator(nodes.GenericNodeVisitor):
                 )
                 self.cur_slide.write(node.astext())
                 self.cur_slide.pop_pending_node()
+        elif txt.startswith('https://'):
+            self.in_http_link = True
         else:
             # needs to be in a p
             # need to hack a bit, since .write usually inserts text:p and text:span
@@ -911,6 +922,7 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             )
 
     def depart_reference(self, node):
+        txt = node.astext()
         self.in_http_link = False
         if node.has_key("refid"):
             return
@@ -921,6 +933,9 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         elif self.at("field_body"):
             self.depart_attribution(node)
             self.cur_slide.parent_of(ns("text", "a"))
+        elif txt.startswith('https://'):
+            self.in_http_link = True
+        
         else:
             self.cur_slide.cur_element.cur_node = self.cur_node
 
@@ -1402,7 +1417,11 @@ class ODPTranslator(nodes.GenericNodeVisitor):
         props = json.loads(raw)
         self.cur_slide.push_element()
         self.cur_slide.add_text_frame(props=props)
-
+        attribs = self._get_text_attribs(node)
+        if attribs:
+            style = preso.TextStyle(**attribs)
+            self.cur_slide.push_style(style)
+        
     def depart_textbox(self, node):
         self.cur_slide.pop_element()
 
