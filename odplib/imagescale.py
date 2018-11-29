@@ -7,7 +7,6 @@ PAD = 4  # leave some space around image (use fit with different params)
 
 
 class ImageScale(object):
-
     def __init__(self, path):
         self.path = path
 
@@ -62,7 +61,7 @@ def adjust_crop(dst_w, dst_h, img_w, img_h):
     return x, y, w, h
 
 
-def adjust_pad(dst_w, dst_h, img_w, img_h, amount=.1):
+def adjust_pad(dst_w, dst_h, img_w, img_h, amount=0.1):
     x, y, w, h = adjust_fit(
         dst_w * (1 - 2 * amount), dst_h * (1 - 2 * amount), img_w, img_h
     )

@@ -290,15 +290,11 @@ class Preso(object):
         p._styles = [x for x in styles if x.tag == ns("office", "styles")][0]
         p._auto_styles = [
             x for x in content if x.tag == ns("office", "automatic-styles")
-        ][
-            0
-        ]
+        ][0]
         # style styles
         style_auto_styles = [
             x for x in styles if x.tag == ns("office", "automatic-styles")
-        ][
-            0
-        ]
+        ][0]
         for child in style_auto_styles:
             p._auto_styles.append(child)
         p._presentation = content.find("*/{}".format(ns("office", "presentation")))
@@ -405,7 +401,6 @@ class Preso(object):
                 data = fin.read()
                 return data
 
-
     def set_template(self, template_file):
         global SLIDE_WIDTH
         global SLIDE_HEIGHT
@@ -472,8 +467,9 @@ class Preso(object):
                 filetype = "image/png"
             elif filename == "Configurations2/":
                 filetype = "application/vnd.sun.xml.ui.configuration"
-            content += """ <manifest:file-entry manifest:media-type="%s" manifest:full-path="%s"/> """ % (
-                filetype, filename
+            content += (
+                """ <manifest:file-entry manifest:media-type="%s" manifest:full-path="%s"/> """
+                % (filetype, filename)
             )
         content += """</manifest:manifest>"""
         return content
@@ -655,8 +651,9 @@ class Picture(object):
                                         "svg:y":y_str #"0cm"
                                        })
     """
+
     COUNT = 0
-    CM_SCALE = 30.
+    CM_SCALE = 30.0
 
     def __init__(self, filepath, **kw):
         self.filepath = filepath
@@ -765,7 +762,6 @@ class Picture(object):
 
 
 class Slide(object):
-
     def __init__(self, preso, page_number=None, master_page_name="", init=True):
         self.title_frame = None
         self.preso = preso
@@ -791,8 +787,8 @@ class Slide(object):
         # text or notes (Subclass of
         # MixedContent)
         self.anim_ids = []  # list of tuples of (id1, id2) for
-                           # animating (ie id1 and id2 should appear
-                           # together)
+        # animating (ie id1 and id2 should appear
+        # together)
 
         self.insert_line_break = 0
         self.grid_w_h_x_y = None
@@ -865,8 +861,10 @@ class Slide(object):
 
     def _add_raw_to_node(self, content, parent):
         # need to add all those namespaces...
-        root = '<root {}>'.format(' '.join('{}="{}"'.format(k,v) for k, v in DOC_CONTENT_ATTRIB.items()))
-        end_root = '</root>'
+        root = "<root {}>".format(
+            " ".join('{}="{}"'.format(k, v) for k, v in DOC_CONTENT_ATTRIB.items())
+        )
+        end_root = "</root>"
         src = root + content + end_root
         for child in et.fromstring(src).getchildren():
             parent.append(child)
@@ -1134,9 +1132,11 @@ class Slide(object):
         # sometimes we need to tack on data after writing
         # (like animations)
         if self.anim_ids:
-            a_node = el('anim:par', {"presentation:node-type": "timing-root"})
+            a_node = el("anim:par", {"presentation:node-type": "timing-root"})
             self._page.append(a_node)
-            seq_node = sub_el(a_node, 'anim:seq', {"presentation:node-type": "main-sequence"})
+            seq_node = sub_el(
+                a_node, "anim:seq", {"presentation:node-type": "main-sequence"}
+            )
             for ids in self.anim_ids:
                 an = Animation(ids=ids)
                 node = an.get_node()
@@ -1191,9 +1191,7 @@ class XMLSlide(Slide):
         content_node = et.fromstring(content)
         auto_node = content_node.findall(
             "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}automatic-styles"
-        )[
-            0
-        ]
+        )[0]
 
         for node in auto_node.getchildren():
             for attr_name in auto_attr_names:
@@ -1236,9 +1234,7 @@ class XMLSlide(Slide):
                     self.preso._pictures.append(p)
                     image.attrib[
                         "{http://www.w3.org/1999/xlink}href"
-                    ] = "Pictures/{}".format(
-                        p.internal_name
-                    )
+                    ] = "Pictures/{}".format(p.internal_name)
         if not found:
             raise KeyError("Updating image failed with mapping:{}".format(mapping))
 
@@ -1265,13 +1261,15 @@ class MixedContent(object):
     """
     An area that supports writing to
     """
+
     draw_id = 0
+
     def __init__(self, slide, name, attrib=None):
         self._default_align = "start"
         self.slide = slide
         if attrib is None:
             attrib = {}
-        attrib['draw:id'] = 'mc-{}'.format(MixedContent.draw_id)
+        attrib["draw:id"] = "mc-{}".format(MixedContent.draw_id)
         MixedContent.draw_id = MixedContent.draw_id + 1
         self.node = el(name, attrib)
         self.cur_node = self.node
@@ -1513,7 +1511,6 @@ class MixedContent(object):
 
 
 class Footer(MixedContent):
-
     def __init__(self, slide):
         self._default_align = "center"
         MixedContent.__init__(self, slide, "presentation:footer-decl")
@@ -1528,7 +1525,6 @@ class Footer(MixedContent):
 
 
 class PictureFrame(MixedContent):
-
     def __init__(self, slide, picture, attrib=None):
         x, y, w, h = picture.get_xywh(slide=slide)
         attrib = attrib or {
@@ -1545,7 +1541,6 @@ class PictureFrame(MixedContent):
 
 
 class TextFrame(MixedContent):
-
     def __init__(self, slide, attrib=None, props=None, style_name=None):
         props = props if props is not None else slide.get_props("outline")
         attrib = attrib or {
@@ -1573,7 +1568,6 @@ class TextFrame(MixedContent):
 
 
 class TitleFrame(TextFrame):
-
     def __init__(self, slide, attrib=None):
         props = slide.get_props("title")
         attrib = attrib or {
@@ -1597,7 +1591,6 @@ class TitleFrame(TextFrame):
 
 
 class NotesFrame(TextFrame):
-
     def __init__(self, slide, attrib=None):
         attrib = attrib or {
             "presentation:style-name": "pr1",
@@ -1639,6 +1632,7 @@ class TextStyle(object):
     based on
     http://books.evc-cit.info/odbook/ch03.html#char-para-styling-section
     """
+
     font_weight = dict(BOLD="bold", NORMAL="normal")
     font_style = dict(ITALIC="italic", NORMAL="normal")
     text_underline_style = dict(
@@ -1754,7 +1748,6 @@ class TextFrameStyle(TextStyle):
 if PYGMENTS_FOUND:
 
     class OdtCodeFormatter(formatter.Formatter):
-
         def __init__(self, writable, preso, **options):
             formatter.Formatter.__init__(self, **options)
             self.writable = writable
@@ -1910,7 +1903,6 @@ http://books.evc-cit.info/odbook/ch03.html#bulleted-numbered-lists-section
 
 
 class NumberList(OutlineList):
-
     def __init__(self, slide):
         self.attrib = {"text:style-name": "L3"}
         OutlineList.__init__(self, slide, self.attrib)
@@ -2002,8 +1994,8 @@ class TableFrame(MixedContent):
         self.frame_attrib = frame_attrib or {
             "draw:style-name": "standard",
             "draw:layer": "layout",
-            "svg:width": "%.2fcm" % (SLIDE_WIDTH * .84),
-            "svg:x": "%.2fcm" % ((SLIDE_WIDTH - (SLIDE_WIDTH * .84)) / 2),
+            "svg:width": "%.2fcm" % (SLIDE_WIDTH * 0.84),
+            "svg:x": "%.2fcm" % ((SLIDE_WIDTH - (SLIDE_WIDTH * 0.84)) / 2),
             "svg:y": "147pt",
         }
         MixedContent.__init__(self, slide, "draw:frame", attrib=self.frame_attrib)
@@ -2020,7 +2012,8 @@ class TableFrame(MixedContent):
         # rows always go on the table:table elem
         self.cur_node = self.table
         attrib = attrib or {
-            "table:style-name": "ro1", "table:default-cell-style-name": "ce1"
+            "table:style-name": "ro1",
+            "table:default-cell-style-name": "ce1",
         }
         self.add_node("table:table-row", attrib)
 
@@ -2034,7 +2027,6 @@ class TableFrame(MixedContent):
 
 
 class Template(object):
-
     def __init__(self, filepath=None):
         if filepath:
             self.set_filepath(filepath)
@@ -2073,8 +2065,9 @@ class Template(object):
                         child.tag == ns("style", "page-layout-properties")
                         and child.get(ns("style", "print-orientation")) == orientation
                     ):
-                        return child.get(ns("fo", "page-width")), child.get(
-                            ns("fo", "page-height")
+                        return (
+                            child.get(ns("fo", "page-width")),
+                            child.get(ns("fo", "page-height")),
                         )
 
         return None, None
@@ -2124,12 +2117,13 @@ class Template(object):
 
         style_name = span_dict["style-name"]
         # then look up text-properies under style and return a dict of its' attributes
-        xpath = ".//" + ns("style", "style") + "[@" + ns(
-            "style", "name"
-        ) + "='{}']/".format(
-            style_name
-        ) + ns(
-            "style", "text-properties"
+        xpath = (
+            ".//"
+            + ns("style", "style")
+            + "[@"
+            + ns("style", "name")
+            + "='{}']/".format(style_name)
+            + ns("style", "text-properties")
         )
         node = list(self.styles.findall(xpath))[0]
         res = dict(node.items())
@@ -2176,11 +2170,11 @@ office:presentation/draw:page
 
     <draw:line draw:style-name="gr1" draw:text-style-name="P2" draw:layer="layout" svg:x1="6.35cm" svg:y1="10.16cm" svg:x2="10.668cm" svg:y2="5.842cm"><text:p/></draw:line>
     """
-    marker_end_ratio = .459 / 3  # .459cm/3pt
-    marker_start_ratio = .359 / 3  # .359cm/3pt
-    stroke_ratio = .106 / 3  # .106cm/3pt
+    marker_end_ratio = 0.459 / 3  # .459cm/3pt
+    marker_start_ratio = 0.359 / 3  # .359cm/3pt
+    stroke_ratio = 0.106 / 3  # .106cm/3pt
 
-    w = float(width[0:width.index("pt")])
+    w = float(width[0 : width.index("pt")])
     sw = w * stroke_ratio
     mew = w * marker_end_ratio
     msw = w * marker_start_ratio

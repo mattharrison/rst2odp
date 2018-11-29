@@ -62,7 +62,6 @@ def clean_path(path):
 
 
 class Zippier:
-
     def __init__(self, name, mode="r"):
         self.name = name
         self.z = zipfile.ZipFile(self.name, mode=mode, compression=zipfile.ZIP_DEFLATED)
@@ -105,7 +104,6 @@ class Zippier:
 
 
 class ZipWrap(object):
-
     def __init__(self, path, force_exist=False):
         """
         Path can be an existing filename, or just a filename.
@@ -147,7 +145,7 @@ class ZipWrap(object):
         def visit_path(arg, dirname, names):
             for name in names:
                 fpath = os.path.join(dirname, name)
-                new_path = fpath[len(path):]
+                new_path = fpath[len(path) :]
                 if os.path.isfile(fpath):
                     content = open(fpath, "rb").read()
                     self.touch(new_path, content)
@@ -173,6 +171,7 @@ class ZipWrap(object):
 
                 else:
                     import codecs
+
                     return codecs.open(path, "rb", "utf-8").read()
 
             elif os.path.isdir(path):
@@ -218,7 +217,7 @@ class ZipWrap(object):
         trim off basepath
         """
         basepath = basepath or self.src_dir
-        return path[len(basepath) + 1:]
+        return path[len(basepath) + 1 :]
 
     def unzip(self, directory):
         """
@@ -248,7 +247,7 @@ class ZipWrap(object):
         # add dirs first
         # Note has issues with empty directories
         for d in dirs_n_files["dirs"]:
-            new_path = d[len(self.src_dir):]
+            new_path = d[len(self.src_dir) :]
             if not new_path.endswith("/"):
                 new_path = new_path + "/"
             zinfo = zipfile.ZipInfo(new_path)
@@ -257,7 +256,7 @@ class ZipWrap(object):
         ##zout.writestr(zinfo, "")
 
         for f in dirs_n_files["files"]:
-            new_path = f[len(self.src_dir):]
+            new_path = f[len(self.src_dir) :]
             zout.write(f, new_path)
 
 
