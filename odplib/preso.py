@@ -1996,7 +1996,7 @@ class TableFrame(MixedContent):
             "draw:layer": "layout",
             "svg:width": "%.2fcm" % (SLIDE_WIDTH * 0.84),
             "svg:x": "%.2fcm" % ((SLIDE_WIDTH - (SLIDE_WIDTH * 0.84)) / 2),
-            "svg:y": "147pt",
+            "svg:y": "1.2cm", #"147pt",
         }
         MixedContent.__init__(self, slide, "draw:frame", attrib=self.frame_attrib)
 

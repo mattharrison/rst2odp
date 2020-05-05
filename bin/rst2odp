@@ -3,6 +3,7 @@
 # Copyright 2008-2016 Matt Harrison
 # Licensed under Apache License, Version 2.0 (current)
 import json
+import lxml
 import os
 import sys
 
@@ -475,7 +476,10 @@ class ODPTranslator(nodes.GenericNodeVisitor):
             pass
         elif self.at('raw'):
             txt = node.astext()
-            self.cur_slide.raw(txt)
+            try:
+                self.cur_slide.raw(txt)
+            except lxml.etree.XMLSyntaxError:
+                print("BAD XML!", txt)
         elif self.at('rawstyle'):
             txt = node.astext()
             self.cur_slide.raw_style(txt)
